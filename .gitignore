@@ -1,0 +1,35 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+.playwright-mcp/
+.DS_Store
+.cache/
+*.tsbuildinfo
+
+# Local editor settings and development notes
+.idea/
+.vscode/
+.codex/
+.agents/
+.claude/
+.superpowers/
+/docs/progress.md
+
+# Local configuration, credentials and generated reports
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.log
+*.bak
+*.backup
+*~
+*.swp
+*.swo
+coverage/

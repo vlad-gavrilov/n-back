@@ -1,0 +1,103 @@
+import { expect, test, type Page } from '@playwright/test'
+async function selectRussian(page: Page) {
+  await expect(page.locator('.topbar')).toBeVisible()
+  const useSettings = !await page.locator('.topbar .language-switch').isVisible()
+  if (useSettings) await page.getByRole('button', { name: 'Session settings' }).click()
+  await page.getByRole('button', { name: 'Русский', exact: true }).click()
+  if (useSettings) await page.getByRole('button', { name: 'Закрыть окно' }).click()
+}
+test('tutorial, theme persistence and a complete visual round', async ({ page }) => {
+  await page.clock.install()
+  await page.goto('/')
+  await page.getByRole('button', { name: 'How to play' }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await page.getByRole('button', { name: 'Ready to begin' }).click()
+  const themeButton = page.getByRole('button', { name: /Switch to .* theme/ })
+  const name = await themeButton.getAttribute('aria-label')
+  await themeButton.click()
+  await page.reload()
+  await expect(themeButton).not.toHaveAttribute('aria-label', name!)
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  await page.clock.runFor(3000)
+  await expect(page.getByText(/Warm-up 1/)).toBeVisible()
+  await page.clock.runFor(6000)
+  await expect(page.getByText('Trial 1 of 20', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /Position/ }).click()
+  await page.clock.runFor(60000)
+  await expect(page.getByRole('heading', { name: 'Round complete' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Continue at/ })).toBeVisible()
+  const nextButton = page.getByRole('button', { name: /Continue at/ })
+  const nextN = Number((await nextButton.innerText()).match(/(\d)-back/)![1])
+  await nextButton.click()
+  await expect(page.getByLabel(/^Game controls/)).toBeFocused()
+  await page.clock.runFor(3000 + nextN * 3000)
+  await page.keyboard.press('Space')
+  await expect(page.getByRole('button', { name: /Position/ })).toContainText(/Correct|False alarm/)
+  await page.getByRole('button', { name: 'Stop round' }).click()
+  await expect(page.getByText('This round was not scored.')).toBeVisible()
+})
+test('dual sound failure is explicit and visual mode remains available', async ({ page }) => {
+  await page.route('**/audio/*.wav*', route => route.abort())
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Dual', exact: true }).click()
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  await page.getByRole('button', { name: 'Use visual mode' }).click()
+  await expect(page.getByRole('button', { name: 'Visual', exact: true })).toHaveAttribute('aria-pressed', 'true')
+})
+for (const locale of ['en', 'ru']) for (const width of [320, 430, 744, 756, 1024, 1440]) test(`layout at ${width}px in both themes (${locale})`, async ({ page }) => {
+  await page.setViewportSize({ width, height: width === 430 ? 932 : 850 })
+  await page.goto('/')
+  if (locale === 'ru') await selectRussian(page)
+  for (let theme = 0; theme < 2; theme++) {
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await expect(page.getByRole('button', { name: locale === 'ru' ? 'Начать раунд' : 'Begin session' })).toBeInViewport()
+    await page.getByRole('button', { name: /Switch to .* theme|Включить .* тему/ }).click()
+  }
+})
+test('stop cancels the round and restart starts with a fresh countdown', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  await page.getByRole('button', { name: 'Stop round' }).click()
+  await expect(page.getByText('This round was not scored.')).toBeVisible()
+  await page.getByRole('button', { name: 'Start fresh' }).click()
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+})
+test('dual mode accepts both touch channels and ends cleanly on audio interruption', async ({ page }) => {
+  await page.addInitScript(() => {
+    const Original = AudioContext
+    window.AudioContext = class extends Original {
+      constructor(options?: AudioContextOptions) { super(options); Object.defineProperty(window, '__testAudioContext', { value: this, configurable: true }) }
+    }
+  })
+  await page.clock.install()
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Dual', exact: true }).click()
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  await page.clock.runFor(9000)
+  for (const [name, pointerId] of [['Position', 1], ['Audio', 2]] as const) {
+    await page.getByRole('button', { name: new RegExp(`^${name}`) }).dispatchEvent('pointerdown', { pointerType: 'touch', pointerId, button: 0 })
+  }
+  for (const name of ['Position', 'Audio']) await expect(page.getByRole('button', { name: new RegExp(`^${name}`) })).toContainText(/Correct|False alarm/)
+  await page.evaluate(async () => { await (window as unknown as { __testAudioContext: AudioContext }).__testAudioContext.suspend() })
+  await expect(page.getByText('This round was not scored.')).toBeVisible()
+})
+for (const reason of ['visibility', 'orientation']) test(`${reason} interrupts without a score`, async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  await page.evaluate(reason => {
+    if (reason === 'visibility') { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')) }
+    else screen.orientation.dispatchEvent(new Event('change'))
+  }, reason)
+  await expect(page.getByText('This round was not scored.')).toBeVisible()
+  await expect(page.getByText('Session score', { exact: true })).toHaveCount(0)
+})
+for (const locale of ['en', 'ru']) for (const [width, height] of [[1200, 683], [932, 430], [1133, 744]]) test(`short and landscape layout ${width}×${height} (${locale})`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await page.goto('/')
+  if (locale === 'ru') await selectRussian(page)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await expect(page.getByRole('button', { name: locale === 'ru' ? 'Начать раунд' : 'Begin session' })).toBeInViewport({ ratio: 1 })
+})
