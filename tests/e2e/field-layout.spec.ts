@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 
 async function fieldGeometry(page: Page) {
   return page.locator('.field').evaluate(field => {

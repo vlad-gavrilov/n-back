@@ -29,6 +29,8 @@ npm run build
 npm run test:e2e
 ```
 
+Browser tests are silent: a shared fixture replaces Web Audio with an in-memory stub before the app loads. Tests still cover audio loading errors, timeouts, retry, interruption and Dual controls, but do not play or decode real recordings. Actual sound quality and playback are checked manually in the game on the target devices.
+
 ## Playing
 
 Choose Visual or Dual, N from 1 to 9, and a field size from 2 to 6. Press only when the current position or spoken letter matches exactly N steps earlier. The first N trials are warm-up, followed by 20 scored trials. In Visual mode use Space. In Dual use V for position, A for audio, or both. Touch controls provide the same actions. Active-round shortcuts work throughout the active page without focusing the game region. A/V refer to physical key positions, including Russian ф/м; keyboards with incomplete physical codes also support these characters. Typing in editable controls and open dialogs does not answer trials. Space/Enter retain the focused button's action; holding a key does not answer later trials.

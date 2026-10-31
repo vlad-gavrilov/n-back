@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('dialog padding and dragging out keep it open; backdrop and Escape restore focus', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 700 })

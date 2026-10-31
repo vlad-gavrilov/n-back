@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { dictionaries, localeNames, locales } from '../../src/i18n'
 
 async function dualSettings(page: Page) {

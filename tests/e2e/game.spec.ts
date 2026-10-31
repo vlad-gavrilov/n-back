@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import { dictionaries, localeNames, locales, type Locale } from '../../src/i18n'
 async function selectLocale(page: Page, locale: Locale) {
   await expect(page.locator('.topbar')).toBeVisible()
@@ -67,12 +67,6 @@ test('stop cancels the round and restart starts with a fresh countdown', async (
   await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
 })
 test('dual mode accepts both touch channels and ends cleanly on audio interruption', async ({ page }) => {
-  await page.addInitScript(() => {
-    const Original = AudioContext
-    window.AudioContext = class extends Original {
-      constructor(options?: AudioContextOptions) { super(options); Object.defineProperty(window, '__testAudioContext', { value: this, configurable: true }) }
-    }
-  })
   await page.clock.install()
   await page.goto('/')
   await page.getByRole('button', { name: 'Dual', exact: true }).click()

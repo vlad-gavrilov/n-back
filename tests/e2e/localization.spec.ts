@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 test.use({ locale: 'ru-RU' })
 for (const [width, height] of [[320, 850], [430, 932], [932, 430]]) test(`mobile language selection through settings at ${width}×${height}`, async ({ page }) => {
   await page.setViewportSize({ width, height })
