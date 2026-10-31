@@ -12,6 +12,7 @@ export function Modal({ title, children, close, t, languageControl, fallbackFocu
   fallbackFocusRef: RefObject<HTMLElement | null>
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
   const outsidePointer = useRef<number | null>(null)
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export function Modal({ title, children, close, t, languageControl, fallbackFocu
     body.style.overflow = 'hidden'
     body.style.paddingRight = `${paddingRight + scrollbarWidth}px`
     dialog.showModal()
+    titleRef.current?.focus({ preventScroll: true })
 
     return () => {
       outsidePointer.current = null
@@ -57,7 +59,7 @@ export function Modal({ title, children, close, t, languageControl, fallbackFocu
       if (startedOutside && outside(event)) close()
     }}
     onPointerCancel={() => { outsidePointer.current = null }}>
-    <div className="dialog-header"><h2 id="dialog-title">{title}</h2>{languageControl}<button onClick={close} aria-label={t.close} className="icon-button">×</button></div>
+    <div className="dialog-header"><h2 id="dialog-title" ref={titleRef} tabIndex={-1}>{title}</h2>{languageControl}<button onClick={close} aria-label={t.close} className="icon-button">×</button></div>
     {children}
   </dialog>
 }
