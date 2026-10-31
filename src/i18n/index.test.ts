@@ -2,7 +2,13 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { dictionaries, initialLocale, saveLocale } from './index'
 afterEach(() => vi.unstubAllGlobals())
 it('has matching complete dictionaries', () => {
-  expect(Object.keys(dictionaries.ru).sort()).toEqual(Object.keys(dictionaries.en).sort())
+  expect(Object.keys(dictionaries).sort()).toEqual(['en', 'ru'])
+  for (const dictionary of Object.values(dictionaries)) {
+    expect(Object.keys(dictionary).sort()).toEqual(Object.keys(dictionaries.en).sort())
+    expect(Object.keys(dictionary.reason).sort()).toEqual(Object.keys(dictionaries.en.reason).sort())
+    expect(Object.keys(dictionary.error).sort()).toEqual(Object.keys(dictionaries.en.error).sort())
+    for (const value of Object.values(dictionary)) if (typeof value === 'string') expect(value.length).toBeGreaterThan(0)
+  }
   for (const value of Object.values(dictionaries.ru)) if (typeof value === 'string') { expect(value.length).toBeGreaterThan(0); expect(value).not.toMatch(/[ёЁ]/) }
 })
 it('formats Russian step forms and parameters', () => {

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { dictionaries, localeNames, locales } from '../../src/i18n'
 
 async function dualSettings(page: Page) {
   await page.setViewportSize({ width: 430, height: 932 })
@@ -111,36 +112,36 @@ for (const mobile of [false, true]) test(`adjust settings preserves results unti
   const score = page.locator('.score-banner strong')
   const result = await score.textContent()
   await page.getByRole('button', { name: 'Adjust session', exact: true }).click()
-  const settings = mobile ? page.getByRole('dialog') : page.locator('aside.settings')
+  const settings = page.getByRole('dialog')
   await expect(settings).toBeVisible()
-  if (!mobile) await expect(settings.getByRole('button', { name: 'Visual', exact: true })).toBeFocused()
   await settings.getByRole('button', { name: 'Visual', exact: true }).click()
-  if (mobile) await settings.getByRole('button', { name: 'Close dialog' }).click()
+  await settings.getByRole('button', { name: 'Close dialog' }).click()
   await expect(score).toHaveText(result!)
   await page.getByRole('button', { name: /Switch to .* theme/ }).click()
   await expect(score).toHaveText(result!)
-  if (mobile) await page.getByRole('button', { name: 'Adjust session', exact: true }).click()
-  await page.getByRole('button', { name: 'Русский', exact: true }).click()
-  if (mobile) await settings.getByRole('button', { name: 'Закрыть окно' }).click()
+  await page.getByRole('button', { name: 'Adjust session', exact: true }).click()
+  await settings.getByRole('button', { name: 'Русский', exact: true }).click()
+  await settings.getByRole('button', { name: 'Закрыть окно' }).click()
   await expect(score).toHaveText(result!)
-  if (mobile) await page.getByRole('button', { name: 'Изменить настройки', exact: true }).click()
+  await page.getByRole('button', { name: 'Изменить настройки', exact: true }).click()
   await settings.getByRole('button', { name: 'Увеличить N' }).click()
-  if (mobile) await settings.getByRole('button', { name: 'Закрыть окно' }).click()
+  await settings.getByRole('button', { name: 'Закрыть окно' }).click()
   await expect(page.locator('.results')).toHaveCount(0)
 })
 
 for (const [width, height] of [[320,850],[430,700],[430,932],[568,320],[932,430],[744,1133],[1133,744],[1440,900]]) test(`interruption card layout and focus at ${width}×${height} in both languages/themes`, async ({ page }) => {
   await page.setViewportSize({ width, height })
   await page.goto('/')
-  for (const locale of ['en', 'ru']) {
-    if (locale === 'ru') {
-      const mobile = await page.getByRole('button', { name: 'Session settings' }).isVisible()
-      if (mobile) await page.getByRole('button', { name: 'Session settings' }).click()
-      await page.getByRole('button', { name: 'Русский', exact: true }).click()
-      if (mobile) await page.getByRole('button', { name: 'Закрыть окно' }).click()
+  for (const locale of locales) {
+    const t = dictionaries[locale]
+    if (locale !== 'en') {
+      const mobile = await page.locator('.mobile-settings').isVisible()
+      if (mobile) await page.locator('.mobile-settings').click()
+      await page.getByRole('button', { name: localeNames[locale], exact: true }).click()
+      if (mobile) await page.getByRole('dialog').locator('.icon-button').click()
     }
     for (let theme = 0; theme < 2; theme++) {
-      const begin = page.getByRole('button', { name: locale === 'en' ? /Begin session|Start fresh/ : /Начать раунд|Начать заново/ })
+      const begin = page.getByRole('button', { name: t.begin, exact: true }).or(page.getByRole('button', { name: t.startFresh, exact: true }))
       await begin.click()
       await page.evaluate(() => screen.orientation.dispatchEvent(new Event('change')))
       const card = page.locator('.interruption-card')
@@ -155,9 +156,9 @@ for (const [width, height] of [[320,850],[430,700],[430,932],[568,320],[932,430]
       expect(layout.overflow).toBe(false)
       expect(layout.cardTop).toBeGreaterThanOrEqual(layout.headingBottom)
       expect(layout.footerTop).toBeGreaterThanOrEqual(layout.cardBottom)
-      await page.getByRole('button', { name: /Switch to .* theme|Включить .* тему/ }).click()
+      await page.locator('.theme-toggle').click()
     }
   }
-  await page.getByRole('button', { name: 'Начать заново', exact: true }).click()
+  await page.getByRole('button', { name: dictionaries.ru.startFresh, exact: true }).click()
   await expect(page.locator('.game-region')).toBeFocused()
 })

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { AudioPlayer, AudioPreparationError, type AudioErrorCode } from './audio/player'
 import { type Channel, type ChannelResult, type SessionConfig } from './game/engine'
 import { Session, type SessionView, type InterruptionReason } from './game/session'
-import { dictionaries, initialLocale, saveLocale, type Locale, type Messages } from './i18n'
+import { dictionaries, initialLocale, localeNames, locales, saveLocale, type Locale, type Messages } from './i18n'
 import { Modal } from './components/Modal'
 import { getResponseChannel } from './input/keyboard'
 const initial: SessionView = { phase: 'idle', countdown: 3, index: -1, cue: null, answered: {} }
@@ -23,11 +23,11 @@ export default function App() {
   const [audioState, setAudioState] = useState<AudioState>({ phase: 'idle' })
   const [compactSettings, setCompactSettings] = useState(() => matchMedia(compactSettingsQuery).matches)
   const session = useRef<Session | null>(null), audio = useRef(new AudioPlayer()), board = useRef<HTMLDivElement>(null)
-  const heading = useRef<HTMLHeadingElement>(null), interruptionHeading = useRef<HTMLHeadingElement>(null), settings = useRef<HTMLElement>(null)
+  const heading = useRef<HTMLHeadingElement>(null), interruptionHeading = useRef<HTMLHeadingElement>(null)
   const operation = useRef(0)
   const busy = audioState.phase === 'loading'
   const active = ['countdown', 'warmup', 'running'].includes(view.phase)
-  const languageControl = <div className="language-switch" role="group" aria-label={t.language}>{(['en', 'ru'] as const).map(language => <button key={language} lang={language} aria-label={language === 'en' ? 'English' : 'Русский'} aria-pressed={locale === language} disabled={active || busy} onClick={() => setLocale(language)}>{language.toUpperCase()}</button>)}</div>
+  const languageControl = <div className="language-switch" role="group" aria-label={t.language}>{locales.map(language => <button key={language} lang={language} aria-label={localeNames[language]} aria-pressed={locale === language} disabled={active || busy} onClick={() => setLocale(language)}>{language.toUpperCase()}</button>)}</div>
   useEffect(() => { document.documentElement.lang = locale; document.title = t.title; document.querySelector('meta[name="description"]')?.setAttribute('content', t.description); saveLocale(locale) }, [locale, t])
   useEffect(() => { document.documentElement.dataset.theme = theme; document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#F5F6F8' : '#151820'); try { localStorage.setItem('nback-theme', theme) } catch { /* Theme still works without persistence */ } }, [theme])
   useEffect(() => { const media = matchMedia(compactSettingsQuery); const update = () => setCompactSettings(media.matches); media.addEventListener('change', update); update(); return () => media.removeEventListener('change', update) }, [])
@@ -84,7 +84,7 @@ export default function App() {
   }
   function answer(channel: Channel) { session.current?.respond(channel) }
   function openModal(next: 'help' | 'research' | 'settings', opener: HTMLElement) { opener.focus({ preventScroll: true }); setModal(next) }
-  function adjust(e: MouseEvent<HTMLButtonElement>) { if (compactSettings) openModal('settings', e.currentTarget); else settings.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')?.focus() }
+  function adjust(e: MouseEvent<HTMLButtonElement>) { openModal('settings', e.currentTarget) }
   const testFeedback = audioState.phase !== 'idle' && audioState.purpose === 'test'
   const audioFeedback = audioState.phase === 'idle' ? null : audioState.phase === 'error' ? <div className="audio-feedback error-message" role="alert">{t.error[audioState.code]}<button onClick={() => audioState.purpose === 'test' ? testSound() : start()}>{t.retrySound}</button>{config.mode === 'dual' && <button onClick={() => configure({ ...config, mode: 'visual' })}>{t.useVisual}</button>}</div> : <p className="audio-feedback" role="status">{audioState.phase === 'success' ? t.soundTestPlayed : testFeedback ? t.soundTestPreparing : t.preparing}</p>
   const controls = <>
@@ -98,8 +98,8 @@ export default function App() {
   </>
   const status = view.phase === 'countdown' ? t.countdown : view.phase === 'warmup' ? t.warmup : view.phase === 'running' ? t.running : view.phase === 'complete' ? t.complete : view.phase === 'interrupted' ? t.interrupted : t.idle
   return <div className="app-shell">
-    <header className="topbar"><a className="wordmark" href="./" aria-label={t.home}><span className="brand-mark" aria-hidden="true"><i/><i/><i/></span>N-back<span className="brand-caption">{t.caption}</span></a><nav aria-label={t.navigation}><button disabled={active || busy} onClick={e => { setLesson(0); openModal('help', e.currentTarget) }}>{t.help}</button>{languageControl}<button className="theme-toggle" aria-label={t.theme(theme === 'light' ? 'dark' : 'light')} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? '◐' : '◑'}</button></nav></header>
-    <main className="workspace"><aside className="settings" ref={settings}><div className="section-heading"><h2>{t.settings}</h2><span aria-hidden="true">↙</span></div>{controls}</aside>
+    <header className="topbar"><a className="wordmark" href="./" aria-label={t.home}><span className="brand-mark" aria-hidden="true"><i/><i/><i/></span>N-back<span className="brand-caption">{t.caption}</span></a><nav aria-label={t.navigation}><button disabled={active || busy} onClick={e => { setLesson(0); openModal('help', e.currentTarget) }}>{t.help}</button>{languageControl}<button className="theme-toggle" aria-label={t.theme(theme === 'light' ? 'dark' : 'light')} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={theme === 'light' ? 'M12 3a9 9 0 0 0 0 18Z' : 'M12 3a9 9 0 0 1 0 18Z'} fill="currentColor"/><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8"/></svg></button></nav></header>
+    <main className="workspace"><aside className="settings"><div className="section-heading"><h2>{t.settings}</h2><span aria-hidden="true">↙</span></div>{controls}</aside>
       <section className="training" aria-label={t.trainer}><div className="training-heading"><div><p className="mode-label">{t.modeLabel(config.mode === 'dual', config.n)}</p><h1 ref={heading} tabIndex={-1}>{status}</h1></div><button className="mobile-settings icon-button" disabled={active || busy} aria-label={t.sessionSettings} onClick={e => openModal('settings', e.currentTarget)}>☷</button></div>
         {modal !== 'settings' && (compactSettings || !testFeedback) && audioFeedback}
         {view.phase === 'complete' && view.result ? <div className="results" aria-live="polite"><div className="score-banner"><span>{t.score}</span><strong>{t.number(view.result.score)}<small>/ 100</small></strong><p>{t.scoreHint}</p></div><div className="stats-grid"><ChannelStats t={t} label={t.position} result={view.result.visual}/>{view.result.audio && <ChannelStats t={t} label={t.audio} result={view.result.audio}/>}</div><div className="result-actions"><button className="primary-button" onClick={() => start(view.result!.nextN)}>{t.continueAt(view.result.nextN)} <span aria-hidden="true">↗</span></button>{view.result.nextN !== config.n && <button className="secondary-button" onClick={() => start()}>{t.repeat(config.n)}</button>}<button className="text-button" onClick={adjust}>{t.adjust}</button></div></div> : view.phase === 'interrupted' ? <section className="interruption-card" aria-labelledby="interruption-title"><span aria-hidden="true">↺</span><h2 id="interruption-title" ref={interruptionHeading} tabIndex={-1}>{t.roundInterrupted}</h2><p>{view.reason && t.reason[view.reason]}</p><p className="interruption-score">{t.notScored}</p><button className="primary-button" disabled={busy} onClick={() => start()}>{busy ? t.preparing : t.startFresh}</button></section> : <>
@@ -115,7 +115,7 @@ export default function App() {
         </>}
       </section>
     </main>
-    <footer><span>{t.footer}</span><button disabled={active || busy} onClick={e => openModal('research', e.currentTarget)}>{t.research} <span aria-hidden="true">↗</span></button></footer>
+    <footer><span>{t.footer}</span><button disabled={active || busy} onClick={e => openModal('research', e.currentTarget)}>{t.research} <span aria-hidden="true">↗</span></button><a href="https://vlad-gavrilov.dev/">{t.byAuthor}</a></footer>
     {modal && <Modal title={modal === 'help' ? t.helpTitle : modal === 'research' ? t.researchTitle : t.settings} close={() => setModal(null)} t={t} languageControl={languageControl} fallbackFocusRef={heading}>{modal === 'settings' ? controls : modal === 'research' ? <div className="research-links"><p>{t.researchIntro}</p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2383929/" target="_blank" rel="noreferrer">{t.authors('Jaeggi', 2008)}<span>{t.jaeggi}</span></a><a href="https://pubmed.ncbi.nlm.nih.gov/28116702/" target="_blank" rel="noreferrer">{t.authors('Soveri', 2017)}<span>{t.soveri}</span></a><a href="https://www.nature.com/articles/s41746-026-02478-9" target="_blank" rel="noreferrer">{t.authors('Li', 2026)}<span>{t.li}</span></a></div> : <div className="lesson"><p className="mode-label">{t.lessonStep(lesson + 1)}</p><h3>{[t.lessonTitle0, t.lessonTitle1, t.lessonTitle2][lesson]}</h3><p>{[t.lessonText0, t.lessonText1, t.lessonText2][lesson]}</p>{lesson === 0 && <div className="example-sequence" aria-label={t.example}>{[0, 8, 0].map((position, i) => <div key={i}><div className="example-field">{Array.from({ length: 9 }, (_, j) => <i key={j} className={position === j ? 'on' : ''}/>)}</div><small>{i === 2 ? `${t.match} ↶` : t.exampleStep(i + 1)}</small></div>)}</div>}<button className="primary-button" onClick={() => lesson === 2 ? setModal(null) : setLesson(lesson + 1)}>{lesson === 2 ? t.ready : t.next}<span aria-hidden="true">↗</span></button></div>}</Modal>}
   </div>
 }

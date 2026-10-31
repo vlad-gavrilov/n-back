@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
-async function selectRussian(page: Page) {
+import { dictionaries, localeNames, locales, type Locale } from '../../src/i18n'
+async function selectLocale(page: Page, locale: Locale) {
   await expect(page.locator('.topbar')).toBeVisible()
   const useSettings = !await page.locator('.topbar .language-switch').isVisible()
-  if (useSettings) await page.getByRole('button', { name: 'Session settings' }).click()
-  await page.getByRole('button', { name: 'Русский', exact: true }).click()
-  if (useSettings) await page.getByRole('button', { name: 'Закрыть окно' }).click()
+  if (useSettings) await page.locator('.mobile-settings').click()
+  await page.getByRole('button', { name: localeNames[locale], exact: true }).click()
+  if (useSettings) await page.getByRole('dialog').locator('.icon-button').click()
 }
 test('tutorial, theme persistence and a complete visual round', async ({ page }) => {
   await page.clock.install()
@@ -47,14 +48,14 @@ test('dual sound failure is explicit and visual mode remains available', async (
   await page.getByRole('button', { name: 'Use visual mode' }).click()
   await expect(page.getByRole('button', { name: 'Visual', exact: true })).toHaveAttribute('aria-pressed', 'true')
 })
-for (const locale of ['en', 'ru']) for (const width of [320, 430, 744, 756, 1024, 1440]) test(`layout at ${width}px in both themes (${locale})`, async ({ page }) => {
+for (const locale of locales) for (const width of [320, 430, 744, 756, 1024, 1440]) test(`layout at ${width}px in both themes (${locale})`, async ({ page }) => {
   await page.setViewportSize({ width, height: width === 430 ? 932 : 850 })
   await page.goto('/')
-  if (locale === 'ru') await selectRussian(page)
+  if (locale !== 'en') await selectLocale(page, locale)
   for (let theme = 0; theme < 2; theme++) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await expect(page.getByRole('button', { name: locale === 'ru' ? 'Начать раунд' : 'Begin session' })).toBeInViewport()
-    await page.getByRole('button', { name: /Switch to .* theme|Включить .* тему/ }).click()
+    await expect(page.getByRole('button', { name: dictionaries[locale].begin })).toBeInViewport()
+    await page.locator('.theme-toggle').click()
   }
 })
 test('stop cancels the round and restart starts with a fresh countdown', async ({ page }) => {
@@ -95,9 +96,9 @@ for (const reason of ['visibility', 'orientation']) test(`${reason} interrupts w
   await expect(page.getByText('This round was not scored.')).toBeVisible()
   await expect(page.getByText('Session score', { exact: true })).toHaveCount(0)
 })
-for (const locale of ['en', 'ru']) for (const [width, height] of [[1200, 683], [932, 430], [1133, 744]]) test(`short and landscape layout ${width}×${height} (${locale})`, async ({ page }) => {
+for (const locale of locales) for (const [width, height] of [[1200, 683], [932, 430], [1133, 744]]) test(`short and landscape layout ${width}×${height} (${locale})`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await page.goto('/')
-  if (locale === 'ru') await selectRussian(page)
+  if (locale !== 'en') await selectLocale(page, locale)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await expect(page.getByRole('button', { name: locale === 'ru' ? 'Начать раунд' : 'Begin session' })).toBeInViewport({ ratio: 1 })
+  await expect(page.getByRole('button', { name: dictionaries[locale].begin })).toBeInViewport({ ratio: 1 })
 })
