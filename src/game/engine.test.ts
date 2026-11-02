@@ -52,6 +52,14 @@ describe('results', () => {
     expect(scoreRound(config, trials, responses).visual).toMatchObject({ hits: 6, falseAlarms: 14, meanHitReactionMs: 0 })
     expect(scoreRound(config, trials, responses).score).toBe(0)
   })
+  it('floors a below-chance round at zero while keeping raw channel stats', () => {
+    const trials = generateTrials(config, seededRandom(9))
+    const responses: ChannelResponse[] = []
+    for (let i = config.n; i < trials.length; i++) if (trials[i].position !== trials[i - config.n].position) responses.push({ trial: i, channel: 'visual' as const, reactionMs: 100 })
+    const result = scoreRound(config, trials, responses)
+    expect(result.visual).toMatchObject({ hits: 0, misses: 6, falseAlarms: 14, correctRejections: 0, falseAlarmRate: 1 })
+    expect(result.score).toBe(0)
+  })
 })
 describe('level recommendation', () => {
   it('requires both channels to pass and lets either channel lower N', () => {

@@ -10,7 +10,7 @@ The 3×3 field uses eight peripheral positions with a central fixation mark. Oth
 
 The application offers individual rounds, visual-only mode, custom fields, optional live feedback and manually accepted level recommendations. It does not impose the 20-block daily schedule from the 2008 study. These are intentional application-level departures from that protocol.
 
-For each channel, the score is 100 × (hits / targets − false alarms / non-targets). Dual scores average both channels. Mean hit reaction time includes only first valid responses on target trials. No hits produces a null time, displayed as a dash. Warm-up trials are excluded. No-response and all-response strategies both score zero.
+For each channel, the score is 100 × (hits / targets − false alarms / non-targets). Dual scores average both channels. The final score is floored at zero. Mean hit reaction time includes only first valid responses on target trials. No hits produces a null time, displayed as a dash. Warm-up trials are excluded. No-response and all-response strategies both score zero.
 
 The next-level recommendation is +1 when errors (misses + false alarms) are at most two in every channel, −1 when errors are at least six in any channel, otherwise unchanged, bounded to 1–9. The user chooses whether to accept it. Aborted rounds receive no score or recommendation.
 

@@ -42,5 +42,5 @@ export function scoreRound(config: SessionConfig, trials: Trial[], responses: Ch
     return { hits, misses, falseAlarms, correctRejections, hitRate, falseAlarmRate, meanHitReactionMs: times.length ? times.reduce((a, b) => a + b, 0) / times.length : null, score: 100 * (hitRate - falseAlarmRate) }
   }
   const visual = channelScore('visual'), audio = config.mode === 'dual' ? channelScore('audio') : undefined
-  return { visual, audio, score: audio ? (visual.score + audio.score) / 2 : visual.score, nextN: recommendLevel(config.n, [visual, ...(audio ? [audio] : [])].map(c => c.misses + c.falseAlarms)) }
+  return { visual, audio, score: Math.max(0, audio ? (visual.score + audio.score) / 2 : visual.score), nextN: recommendLevel(config.n, [visual, ...(audio ? [audio] : [])].map(c => c.misses + c.falseAlarms)) }
 }
