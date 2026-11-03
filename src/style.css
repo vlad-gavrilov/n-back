@@ -24,3 +24,6 @@ button:not(:disabled):active{background-color:color-mix(in srgb,var(--accent-sof
 :root[data-input-modality=pointer] :is(button,a,input,select,.game-region,.training-heading h1,.interruption-card h2,.dialog-header h2):focus{outline:none}
 
 :root[data-theme=dark] .field-cell.lit span{background:#e0edff}
+
+.select-label select{appearance:none;-webkit-appearance:none;padding-right:44px;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23646977' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center}
+:root[data-theme=dark] .select-label select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23a8afbe' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
