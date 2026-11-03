@@ -14,8 +14,12 @@ it('has matching complete dictionaries', () => {
 it('formats Russian step forms and parameters', () => {
   expect([1,2,5,9].map(n => dictionaries.ru.stepUnit(n))).toEqual([' шаг',' шага',' шагов',' шагов'])
   expect(dictionaries.en.stepUnit(1)).toBe(' step')
+  expect([1,3,5].map(n => dictionaries.ru.secondUnit(n))).toEqual([' секунда',' секунды',' секунд'])
+  expect(dictionaries.en.secondUnit(1)).toBe(' second')
   expect(dictionaries.ru.trial(7)).toBe('Показ 7 из 20')
   expect(dictionaries.ru.milliseconds(123)).toBe('123 мс')
+  expect(dictionaries.ru.seconds(3000)).toBe('3 с')
+  expect(dictionaries.en.seconds(6000)).toBe('6 s')
 })
 it('defaults to English and restores only valid saved locales', () => {
   for (const [value, expected] of [[null,'en'],['fr','en'],['ru','ru'],['en','en']]) {

@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Session, type Clock } from './session'
-import { seededRandom } from './engine'
-const config = { mode: 'dual' as const, n: 2, gridSize: 3, liveFeedback: true }
-function setup() {
+import { seededRandom, type SessionConfig } from './engine'
+const config: SessionConfig = { mode: 'dual', n: 2, gridSize: 3, liveFeedback: true, trialMs: 3000 }
+function setup(overrides: Partial<SessionConfig> = {}) {
   vi.useFakeTimers(); let now = 0
   const clock: Clock = { now: () => now, schedule: (cb, delay) => setTimeout(cb, delay), cancel: clearTimeout }
   const sound = vi.fn(), stop = vi.fn()
-  const session = new Session(config, vi.fn(), sound, stop, clock, seededRandom(3))
+  const session = new Session({ ...config, ...overrides }, vi.fn(), sound, stop, clock, seededRandom(3))
   const advance = (ms: number) => { for (let i = 0; i < ms; i++) { now++; vi.advanceTimersByTime(1) } }
   return { session, advance, sound, stop, clock, setNow: (value: number) => { now = value } }
 }
@@ -44,6 +44,15 @@ describe('session timing', () => {
     advance(1); expect(s.view.cue).toBeNull()
     advance(3000 + s.trials.length * 3000 - clock.now() + 1)
     expect(s.view.result?.visual.meanHitReactionMs).toBe(0)
+  })
+
+  it('paces trials by the configured interval and closes the response window at it', () => {
+    const { session: s, advance, setNow } = setup({ trialMs: 2000 }); s.start()
+    advance(3000); expect(s.view.phase).toBe('warmup'); expect(s.view.index).toBe(0)
+    advance(2000); expect(s.view.index).toBe(1)
+    advance(2000); expect(s.view.phase).toBe('running'); expect(s.view.index).toBe(2)
+    s.respond('visual'); expect(s.view.answered.visual).toBeDefined()
+    setNow(9000); s.respond('audio'); expect(s.view.answered.audio).toBeUndefined()
   })
 
 })

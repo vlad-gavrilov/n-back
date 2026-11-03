@@ -1,4 +1,4 @@
-import { CUE_MS, TRIAL_MS, generateTrials, isTarget, scoreRound, type Channel, type ChannelResponse, type SessionConfig, type SessionResult, type Trial } from './engine'
+import { CUE_MS, generateTrials, isTarget, scoreRound, type Channel, type ChannelResponse, type SessionConfig, type SessionResult, type Trial } from './engine'
 export type InterruptionReason = 'timing' | 'hidden' | 'orientation' | 'audio' | 'stopped'
 export interface SessionView { phase: 'idle' | 'countdown' | 'warmup' | 'running' | 'complete' | 'interrupted'; countdown: number; index: number; cue: number | null; answered: Partial<Record<Channel, boolean>>; result?: SessionResult; reason?: InterruptionReason }
 export interface Clock { now(): number; schedule(callback: () => void, delay: number): ReturnType<typeof setTimeout>; cancel(handle: ReturnType<typeof setTimeout>): void }
@@ -17,7 +17,7 @@ export class Session {
   private tick = () => {
     const now = this.clock.now(), elapsed = now - this.epoch
     if (elapsed < 0) { this.publish({ ...this.view, countdown: Math.ceil(-elapsed / 1000) }); this.queue(Math.min(1000, -elapsed)); return }
-    const index = Math.floor(elapsed / TRIAL_MS), offset = elapsed % TRIAL_MS
+    const index = Math.floor(elapsed / this.config.trialMs), offset = elapsed % this.config.trialMs
     if (index !== this.view.index) {
       if (offset > 250 || index > this.view.index + 1) { this.interrupt('timing'); return }
       if (index >= this.trials.length) { this.stop(); this.publish({ ...this.view, phase: 'complete', cue: null, result: scoreRound(this.config, this.trials, this.responses) }); return }
@@ -26,7 +26,7 @@ export class Session {
       const letter = this.trials[index].letter
       if (letter) this.play(letter)
     } else if (now - this.actualOnset >= CUE_MS && this.view.cue !== null) this.publish({ ...this.view, cue: null })
-    this.queue(this.view.cue !== null ? this.actualOnset + CUE_MS - now : TRIAL_MS - offset)
+    this.queue(this.view.cue !== null ? this.actualOnset + CUE_MS - now : this.config.trialMs - offset)
   }
   private queue(delay: number) {
     const generation = this.generation, due = this.clock.now() + delay
@@ -39,7 +39,7 @@ export class Session {
   respond(channel: Channel) {
     if (this.view.phase !== 'running' || (channel === 'audio' && this.config.mode !== 'dual') || this.view.answered[channel] !== undefined) return
     const reactionMs = this.clock.now() - this.actualOnset
-    if (reactionMs < 0 || reactionMs >= TRIAL_MS || this.clock.now() >= this.epoch + (this.view.index + 1) * TRIAL_MS) return
+    if (reactionMs < 0 || reactionMs >= this.config.trialMs || this.clock.now() >= this.epoch + (this.view.index + 1) * this.config.trialMs) return
     this.responses.push({ trial: this.view.index, channel, reactionMs })
     this.publish({ ...this.view, answered: { ...this.view.answered, [channel]: isTarget(this.trials, this.view.index, this.config.n, channel) } })
   }

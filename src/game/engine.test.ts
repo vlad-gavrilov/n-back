@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { generateTrials, scoreRound, recommendLevel, seededRandom, type ChannelResponse, type SessionConfig } from './engine'
 
-const config: SessionConfig = { mode: 'dual', n: 2, gridSize: 3, liveFeedback: true }
+const config: SessionConfig = { mode: 'dual', n: 2, gridSize: 3, liveFeedback: true, trialMs: 3000 }
 describe('sequence contract', () => {
   for (const mode of ['visual', 'dual'] as const) for (let n = 1; n <= 9; n++) for (let gridSize = 2; gridSize <= 6; gridSize++) {
     it(`${mode}, ${n}-back, ${gridSize}×${gridSize}: exact targets and no accidental matches`, () => {
@@ -24,7 +24,7 @@ describe('sequence contract', () => {
     })
   }
   it('replays the same seed', () => expect(generateTrials(config, seededRandom(42))).toEqual(generateTrials(config, seededRandom(42))))
-  it('rejects unsupported configuration', () => expect(() => generateTrials({ ...config, n: 0 })).toThrow())
+  it('rejects unsupported configuration', () => { expect(() => generateTrials({ ...config, n: 0 })).toThrow(); expect(() => generateTrials({ ...config, trialMs: 1234 })).toThrow(); expect(() => generateTrials({ ...config, trialMs: 1000 })).not.toThrow() })
 })
 describe('results', () => {
   it('scores silence as zero, with no hit reaction time', () => {
@@ -59,6 +59,14 @@ describe('results', () => {
     const result = scoreRound(config, trials, responses)
     expect(result.visual).toMatchObject({ hits: 0, misses: 6, falseAlarms: 14, correctRejections: 0, falseAlarmRate: 1 })
     expect(result.score).toBe(0)
+  })
+  it('bounds valid reaction times by the configured interval', () => {
+    const paced = { ...config, trialMs: 2000 }
+    const trials = generateTrials(paced, seededRandom(9))
+    const target = trials.findIndex((t, i, all) => i >= config.n && t.position === all[i - config.n].position)
+    const responses: ChannelResponse[] = [{ trial: target, channel: 'visual' as const, reactionMs: 1999 }]
+    expect(scoreRound(paced, trials, responses).visual.hits).toBe(1)
+    expect(scoreRound(paced, trials, [{ trial: target, channel: 'visual' as const, reactionMs: 2000 }]).visual.hits).toBe(0)
   })
 })
 describe('level recommendation', () => {

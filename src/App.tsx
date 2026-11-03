@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { AudioPlayer, AudioPreparationError, type AudioErrorCode } from './audio/player'
-import { type Channel, type ChannelResult, type SessionConfig } from './game/engine'
+import { DEFAULT_TRIAL_MS, TRIAL_MS_OPTIONS, type Channel, type ChannelResult, type SessionConfig } from './game/engine'
 import { Session, type SessionView, type InterruptionReason } from './game/session'
 import { dictionaries, initialLocale, localeNames, locales, saveLocale, type Locale, type Messages } from './i18n'
 import { Modal } from './components/Modal'
@@ -15,7 +15,7 @@ function ChannelStats({ label, result, t }: { label: string; result: ChannelResu
 export default function App() {
   const [locale, setLocale] = useState<Locale>(initialLocale)
   const t = dictionaries[locale]
-  const [config, setConfig] = useState<SessionConfig>({ mode: 'visual', n: 2, gridSize: 3, liveFeedback: true })
+  const [config, setConfig] = useState<SessionConfig>({ mode: 'visual', n: 2, gridSize: 3, liveFeedback: true, trialMs: DEFAULT_TRIAL_MS })
   const [view, setView] = useState<SessionView>(initial)
   const [theme, setTheme] = useState(initialTheme)
   const [modal, setModal] = useState<'help' | 'research' | 'settings' | null>(null)
@@ -59,7 +59,7 @@ export default function App() {
     return () => document.removeEventListener('keydown', gameKeyDown)
   }, [view.phase, config.mode, modal])
   function configure(next: SessionConfig) {
-    if (next.mode === config.mode && next.n === config.n && next.gridSize === config.gridSize && next.liveFeedback === config.liveFeedback) return
+    if (next.mode === config.mode && next.n === config.n && next.gridSize === config.gridSize && next.liveFeedback === config.liveFeedback && next.trialMs === config.trialMs) return
     operation.current++; session.current?.stop(); setAudioState({ phase: 'idle' }); setConfig(next); setView(initial)
   }
   async function start(n = config.n) {
@@ -91,6 +91,7 @@ export default function App() {
     <fieldset disabled={active || busy}><legend>{t.exercise}</legend><div className="segmented">{(['visual', 'dual'] as const).map(mode => <button key={mode} aria-pressed={config.mode === mode} onClick={() => configure({ ...config, mode })}>{mode === 'visual' ? t.visual : t.dual}</button>)}</div></fieldset>
     <fieldset disabled={active || busy}><legend>{t.lookBack}</legend><div className="stepper"><button aria-label={t.decrease} disabled={config.n === 1} onClick={() => configure({ ...config, n: config.n - 1 })}>−</button><output aria-label={t.level}>{t.number(config.n)}<small>{t.stepUnit(config.n)}</small></output><button aria-label={t.increase} disabled={config.n === 9} onClick={() => configure({ ...config, n: config.n + 1 })}>+</button></div></fieldset>
     <label className="select-label">{t.fieldSize}<select disabled={active || busy} value={config.gridSize} onChange={e => configure({ ...config, gridSize: Number(e.target.value) })}>{[2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} × {n}</option>)}</select></label>
+    <fieldset disabled={active || busy}><legend>{t.interval}</legend><div className="stepper"><button aria-label={t.decreaseInterval} disabled={config.trialMs === TRIAL_MS_OPTIONS[0]} onClick={() => configure({ ...config, trialMs: TRIAL_MS_OPTIONS[TRIAL_MS_OPTIONS.indexOf(config.trialMs) - 1] })}>−</button><output aria-label={t.interval}>{t.number(config.trialMs / 1000)}<small>{t.secondUnit(config.trialMs / 1000)}</small></output><button aria-label={t.increaseInterval} disabled={config.trialMs === TRIAL_MS_OPTIONS[TRIAL_MS_OPTIONS.length - 1]} onClick={() => configure({ ...config, trialMs: TRIAL_MS_OPTIONS[TRIAL_MS_OPTIONS.indexOf(config.trialMs) + 1] })}>+</button></div></fieldset>
     <label className="check-label"><input type="checkbox" disabled={active || busy} checked={config.liveFeedback} onChange={e => configure({ ...config, liveFeedback: e.target.checked })} /><span>{t.liveFeedback}<small>{t.feedbackHint}</small></span></label>
     {config.mode === 'dual' && <button className="text-button" disabled={busy || active} onClick={testSound}><span aria-hidden="true">♫ </span>{t.testSound}</button>}
     {(modal === 'settings' || !compactSettings && testFeedback) && audioFeedback}
@@ -108,7 +109,7 @@ export default function App() {
               {Array.from({ length: config.gridSize ** 2 }, (_, i) => <div key={i} className={`field-cell ${config.gridSize === 3 && i === 4 ? 'fixation' : ''} ${view.cue === i ? 'lit' : ''}`} data-active={view.cue === i ? 'true' : undefined} aria-hidden="true"><span/></div>)}
               {view.phase === 'countdown' && <div className="countdown" role="status">{t.number(view.countdown)}</div>}
             </div>
-            <div className="round-status" aria-live="polite">{view.phase === 'warmup' ? t.warmupProgress(view.index + 1, config.n) : view.phase === 'running' ? t.trial(view.index - config.n + 1) : view.phase === 'countdown' ? t.settle : t.duration}</div>
+            <div className="round-status" aria-live="polite">{view.phase === 'warmup' ? t.warmupProgress(view.index + 1, config.n) : view.phase === 'running' ? t.trial(view.index - config.n + 1) : view.phase === 'countdown' ? t.settle : t.duration(config.trialMs)}</div>
             <div className="answers">{(['visual', ...(config.mode === 'dual' ? ['audio'] : [])] as Channel[]).map(channel => <button key={channel} className={`answer-button ${view.answered[channel] !== undefined ? config.liveFeedback ? view.answered[channel] ? 'correct' : 'incorrect' : 'registered' : ''}`} disabled={view.phase !== 'running'} onPointerDown={e => { if (e.button !== 0) return; e.preventDefault(); answer(channel) }} onClick={e => { if (e.detail === 0) answer(channel) }}><span>{channel === 'visual' ? t.position : t.audio}</span><kbd>{channel === 'audio' ? 'A' : config.mode === 'dual' ? 'V' : t.space}</kbd><small>{view.answered[channel] === undefined ? t.match : config.liveFeedback ? view.answered[channel] ? t.correct : t.falseAlarm : t.registered}</small></button>)}</div>
           </div>
           <div className="start-row">{active ? <button className="secondary-button" onClick={() => session.current?.interrupt('stopped')}>{t.stop}</button> : <button className="primary-button" disabled={busy} onClick={() => start()}>{busy && !testFeedback ? t.preparing : t.begin}<span aria-hidden="true">↗</span></button>}<p>{config.mode === 'dual' ? t.dualHint : t.visualHint}</p></div>
@@ -116,6 +117,6 @@ export default function App() {
       </section>
     </main>
     <footer><span>{t.footer}</span><button disabled={active || busy} onClick={e => openModal('research', e.currentTarget)}>{t.research} <span aria-hidden="true">↗</span></button><a href="https://vlad-gavrilov.dev/">{t.byAuthor}</a></footer>
-    {modal && <Modal title={modal === 'help' ? t.helpTitle : modal === 'research' ? t.researchTitle : t.settings} close={() => setModal(null)} t={t} languageControl={languageControl} fallbackFocusRef={heading}>{modal === 'settings' ? controls : modal === 'research' ? <div className="research-links"><p>{t.researchIntro}</p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2383929/" target="_blank" rel="noreferrer">{t.authors('Jaeggi', 2008)}<span>{t.jaeggi}</span></a><a href="https://pubmed.ncbi.nlm.nih.gov/28116702/" target="_blank" rel="noreferrer">{t.authors('Soveri', 2017)}<span>{t.soveri}</span></a><a href="https://www.nature.com/articles/s41746-026-02478-9" target="_blank" rel="noreferrer">{t.authors('Li', 2026)}<span>{t.li}</span></a></div> : <div className="lesson"><p className="mode-label">{t.lessonStep(lesson + 1)}</p><h3>{[t.lessonTitle0, t.lessonTitle1, t.lessonTitle2][lesson]}</h3><p>{[t.lessonText0, t.lessonText1, t.lessonText2][lesson]}</p>{lesson === 0 && <div className="example-sequence" aria-label={t.example}>{[0, 8, 0].map((position, i) => <div key={i}><div className="example-field">{Array.from({ length: 9 }, (_, j) => <i key={j} className={position === j ? 'on' : ''}/>)}</div><small>{i === 2 ? `${t.match} ↶` : t.exampleStep(i + 1)}</small></div>)}</div>}<button className="primary-button" onClick={() => lesson === 2 ? setModal(null) : setLesson(lesson + 1)}>{lesson === 2 ? t.ready : t.next}<span aria-hidden="true">↗</span></button></div>}</Modal>}
+    {modal && <Modal title={modal === 'help' ? t.helpTitle : modal === 'research' ? t.researchTitle : t.settings} close={() => setModal(null)} t={t} languageControl={languageControl} fallbackFocusRef={heading}>{modal === 'settings' ? controls : modal === 'research' ? <div className="research-links"><p>{t.researchIntro}</p><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2383929/" target="_blank" rel="noreferrer">{t.authors('Jaeggi', 2008)}<span>{t.jaeggi}</span></a><a href="https://pubmed.ncbi.nlm.nih.gov/28116702/" target="_blank" rel="noreferrer">{t.authors('Soveri', 2017)}<span>{t.soveri}</span></a><a href="https://www.nature.com/articles/s41746-026-02478-9" target="_blank" rel="noreferrer">{t.authors('Li', 2026)}<span>{t.li}</span></a></div> : <div className="lesson"><p className="mode-label">{t.lessonStep(lesson + 1)}</p><h3>{[t.lessonTitle0, t.lessonTitle1, t.lessonTitle2][lesson]}</h3><p>{[t.lessonText0, t.lessonText1, t.lessonText2(config.trialMs)][lesson]}</p>{lesson === 0 && <div className="example-sequence" aria-label={t.example}>{[0, 8, 0].map((position, i) => <div key={i}><div className="example-field">{Array.from({ length: 9 }, (_, j) => <i key={j} className={position === j ? 'on' : ''}/>)}</div><small>{i === 2 ? `${t.match} ↶` : t.exampleStep(i + 1)}</small></div>)}</div>}<button className="primary-button" onClick={() => lesson === 2 ? setModal(null) : setLesson(lesson + 1)}>{lesson === 2 ? t.ready : t.next}<span aria-hidden="true">↗</span></button></div>}</Modal>}
   </div>
 }

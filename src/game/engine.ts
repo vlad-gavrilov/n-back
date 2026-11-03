@@ -1,18 +1,19 @@
 export type Channel = 'visual' | 'audio'
-export interface SessionConfig { mode: 'visual' | 'dual'; n: number; gridSize: number; liveFeedback: boolean }
+export interface SessionConfig { mode: 'visual' | 'dual'; n: number; gridSize: number; liveFeedback: boolean; trialMs: number }
 export interface Trial { position: number; letter?: string }
 export interface ChannelResponse { trial: number; channel: Channel; reactionMs: number }
 export interface ChannelResult { hits: number; misses: number; falseAlarms: number; correctRejections: number; hitRate: number; falseAlarmRate: number; meanHitReactionMs: number | null; score: number }
 export interface SessionResult { visual: ChannelResult; audio?: ChannelResult; score: number; nextN: number }
 export const LETTERS = ['B', 'F', 'H', 'J', 'M', 'Q', 'R', 'W'] as const
-export const TRIAL_MS = 3000
+export const TRIAL_MS_OPTIONS = [1000, 2000, 3000, 4000, 5000, 6000]
+export const DEFAULT_TRIAL_MS = 3000
 export const CUE_MS = 500
 export function seededRandom(seed: number): () => number {
   return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t ^= t + Math.imul(t ^ t >>> 7, 61 | t); return ((t ^ t >>> 14) >>> 0) / 4294967296 }
 }
 export function generateTrials(config: SessionConfig, random = Math.random): Trial[] {
-  const { n, gridSize, mode } = config
-  if (!Number.isInteger(n) || n < 1 || n > 9 || !Number.isInteger(gridSize) || gridSize < 2 || gridSize > 6 || !['visual', 'dual'].includes(mode)) throw new Error('Unsupported session configuration')
+  const { n, gridSize, mode, trialMs } = config
+  if (!Number.isInteger(n) || n < 1 || n > 9 || !Number.isInteger(gridSize) || gridSize < 2 || gridSize > 6 || !['visual', 'dual'].includes(mode) || !TRIAL_MS_OPTIONS.includes(trialMs)) throw new Error('Unsupported session configuration')
   const positions = Array.from({ length: gridSize ** 2 }, (_, i) => i).filter(i => gridSize !== 3 || i !== 4)
   const masks = mode === 'dual' ? [...Array(2).fill(3), ...Array(4).fill(1), ...Array(4).fill(2), ...Array(10).fill(0)] as number[] : [...Array(6).fill(1), ...Array(14).fill(0)] as number[]
   for (let i = masks.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [masks[i], masks[j]] = [masks[j], masks[i]] }
@@ -33,7 +34,7 @@ export function scoreRound(config: SessionConfig, trials: Trial[], responses: Ch
     let hits = 0, misses = 0, falseAlarms = 0, correctRejections = 0
     const times: number[] = []
     for (let i = config.n; i < trials.length; i++) {
-      const response = responses.find(r => r.trial === i && r.channel === channel && Number.isFinite(r.reactionMs) && r.reactionMs >= 0 && r.reactionMs < TRIAL_MS)
+      const response = responses.find(r => r.trial === i && r.channel === channel && Number.isFinite(r.reactionMs) && r.reactionMs >= 0 && r.reactionMs < config.trialMs)
       const target = isTarget(trials, i, config.n, channel)
       if (target && response) { hits++; times.push(response.reactionMs) } else if (target) misses++; else if (response) falseAlarms++; else correctRejections++
     }
