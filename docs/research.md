@@ -14,4 +14,4 @@ For each channel, the score is 100 × (hits / targets − false alarms / non-tar
 
 The next-level recommendation is +1 when errors (misses + false alarms) are at most two in every channel, −1 when errors are at least six in any channel, otherwise unchanged, bounded to 1–9. The user chooses whether to accept it. Aborted rounds receive no score or recommendation.
 
-Input and stimulus times are measured with a monotonic browser clock. Scheduled boundaries avoid cumulative interval drift. If a stimulus onset arrives more than 250 ms late or an entire stimulus was skipped, the round is interrupted rather than replayed at accelerated speed.
+Input and stimulus times are measured with a monotonic browser clock. Scheduled boundaries avoid cumulative interval drift. If a stimulus onset arrives more than 250 ms late, an entire stimulus was skipped, or the previous cue is still visible at the next trial boundary, the round is interrupted rather than replayed at accelerated speed.

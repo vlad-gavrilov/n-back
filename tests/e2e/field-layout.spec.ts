@@ -61,3 +61,19 @@ for (const width of [430, 1440]) test(`theme control and its artwork are centere
     await button.click()
   }
 })
+
+for (const colorScheme of ['light', 'dark'] as const) for (const theme of ['light', 'dark']) test(`forced colors preserve native select arrows and keyboard input (${theme} theme, ${colorScheme} palette)`, async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit does not emulate forced colors')
+  await page.emulateMedia({ forcedColors: 'active', colorScheme })
+  await page.goto('/')
+  if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('.theme-toggle').click()
+  expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true)
+  const fieldSize = page.getByRole('combobox', { name: 'Field size' })
+  await expect(fieldSize).toHaveCSS('appearance', 'auto')
+  await expect(fieldSize).toHaveCSS('background-image', 'none')
+  await fieldSize.focus()
+  await fieldSize.press('4')
+  await fieldSize.press('Enter')
+  await expect(fieldSize).toHaveValue('4')
+  await expect(page.locator('.field-cell')).toHaveCount(16)
+})

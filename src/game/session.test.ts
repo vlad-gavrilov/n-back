@@ -55,4 +55,19 @@ describe('session timing', () => {
     setNow(9000); s.respond('audio'); expect(s.view.answered.audio).toBeUndefined()
   })
 
+  it.each(['visual', 'dual'] as const)('interrupts instead of merging one-second stimuli after accepted delays (%s)', mode => {
+    const { session: s, advance, setNow, sound } = setup({ mode, n: 1, trialMs: 1000 }); s.start()
+    const target = s.trials.findIndex((trial, i, trials) => i > 1 && trial.position === trials[i - 1].position)
+    const previousOnset = 3000 + (target - 1) * 1000
+    advance(previousOnset - 1); setNow(previousOnset + 250); vi.advanceTimersByTime(1)
+    expect(s.view.index).toBe(target - 1)
+    expect(s.view.cue).toBe(s.trials[target].position)
+    const playCount = sound.mock.calls.length
+
+    setNow(previousOnset + 1000); vi.advanceTimersByTime(500)
+    expect(s.view).toMatchObject({ phase: 'interrupted', reason: 'timing', index: target - 1, cue: null })
+    expect(s.view.result).toBeUndefined()
+    expect(sound).toHaveBeenCalledTimes(playCount)
+  })
+
 })

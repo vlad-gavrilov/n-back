@@ -19,7 +19,7 @@ export class Session {
     if (elapsed < 0) { this.publish({ ...this.view, countdown: Math.ceil(-elapsed / 1000) }); this.queue(Math.min(1000, -elapsed)); return }
     const index = Math.floor(elapsed / this.config.trialMs), offset = elapsed % this.config.trialMs
     if (index !== this.view.index) {
-      if (offset > 250 || index > this.view.index + 1) { this.interrupt('timing'); return }
+      if (offset > 250 || index > this.view.index + 1 || this.view.cue !== null) { this.interrupt('timing'); return }
       if (index >= this.trials.length) { this.stop(); this.publish({ ...this.view, phase: 'complete', cue: null, result: scoreRound(this.config, this.trials, this.responses) }); return }
       this.actualOnset = now
       this.publish({ phase: index < this.config.n ? 'warmup' : 'running', countdown: 0, index, cue: this.trials[index].position, answered: {} })
