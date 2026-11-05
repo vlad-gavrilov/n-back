@@ -35,11 +35,11 @@ export default function App() {
     const interrupt = (reason: InterruptionReason) => { operation.current++; session.current?.interrupt(reason); audio.current.stop(); setAudioState({ phase: 'idle' }) }
     const visibility = () => { if (document.hidden) interrupt('hidden') }
     const orientation = () => interrupt('orientation')
-    audio.current.onInterrupted = () => interrupt('audio')
+    audio.current.onInterrupted = () => { if (config.mode === 'dual') interrupt('audio') }
     document.addEventListener('visibilitychange', visibility); screen.orientation?.addEventListener('change', orientation)
     const player = audio.current
     return () => { operation.current++; session.current?.stop(); player.stop(); document.removeEventListener('visibilitychange', visibility); screen.orientation?.removeEventListener('change', orientation) }
-  }, [])
+  }, [config.mode])
   useEffect(() => { if (view.phase === 'countdown') board.current?.focus(); else if (view.phase === 'interrupted') interruptionHeading.current?.focus() }, [view.phase])
   useEffect(() => {
     if (view.phase !== 'running' || modal) return
@@ -47,11 +47,17 @@ export default function App() {
       if (event.defaultPrevented || event.isComposing) return
       const target = event.target instanceof Element ? event.target : null
       if (target?.closest('input,select,textarea,[contenteditable]:not([contenteditable="false"]),[role="textbox"]')) return
-      const nativeActivation = event.code === 'Space' || event.code === 'Enter' || (!event.code || event.code === 'Unidentified') && [' ', 'Spacebar', 'Enter'].includes(event.key)
+      const nativeActivation = event.code === 'Space' || event.code === 'Enter' || event.code === 'NumpadEnter' || (!event.code || event.code === 'Unidentified') && [' ', 'Spacebar', 'Enter'].includes(event.key)
       const responseButton = target?.closest('.answer-button')
       if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) { if (responseButton && nativeActivation) event.preventDefault(); return }
       const channel = getResponseChannel(event, config.mode)
       if (event.repeat) { if (channel || responseButton && nativeActivation) event.preventDefault(); return }
+      if (responseButton && nativeActivation) {
+        event.preventDefault()
+        const focusedChannel = responseButton.getAttribute('data-channel')
+        if (focusedChannel === 'visual' || focusedChannel === 'audio') session.current?.respond(focusedChannel)
+        return
+      }
       if (nativeActivation && target?.closest('button,a[href],summary,[role="button"],[role="link"]')) return
       if (channel) { event.preventDefault(); session.current?.respond(channel) }
     }
@@ -64,6 +70,7 @@ export default function App() {
   }
   async function start(n = config.n) {
     const token = ++operation.current
+    setModal(null)
     session.current?.stop(); setAudioState({ phase: 'loading', purpose: 'session' })
     try {
       if (config.mode === 'dual') await audio.current.prepare()
@@ -103,14 +110,14 @@ export default function App() {
     <main className="workspace"><aside className="settings"><div className="section-heading"><h2>{t.settings}</h2><span aria-hidden="true">↙</span></div>{controls}</aside>
       <section className="training" aria-label={t.trainer}><div className="training-heading"><div><p className="mode-label">{t.modeLabel(config.mode === 'dual', config.n)}</p><h1 ref={heading} tabIndex={-1}>{status}</h1></div><button className="mobile-settings icon-button" disabled={active || busy} aria-label={t.sessionSettings} onClick={e => openModal('settings', e.currentTarget)}>☷</button></div>
         {modal !== 'settings' && (compactSettings || !testFeedback) && audioFeedback}
-        {view.phase === 'complete' && view.result ? <div className="results" aria-live="polite"><div className="score-banner"><span>{t.score}</span><strong>{t.number(view.result.score)}<small>/ 100</small></strong><p>{t.scoreHint}</p></div><div className="stats-grid"><ChannelStats t={t} label={t.position} result={view.result.visual}/>{view.result.audio && <ChannelStats t={t} label={t.audio} result={view.result.audio}/>}</div><div className="result-actions"><button className="primary-button" onClick={() => start(view.result!.nextN)}>{t.continueAt(view.result.nextN)} <span aria-hidden="true">↗</span></button>{view.result.nextN !== config.n && <button className="secondary-button" onClick={() => start()}>{t.repeat(config.n)}</button>}<button className="text-button" onClick={adjust}>{t.adjust}</button></div></div> : view.phase === 'interrupted' ? <section className="interruption-card" aria-labelledby="interruption-title"><span aria-hidden="true">↺</span><h2 id="interruption-title" ref={interruptionHeading} tabIndex={-1}>{t.roundInterrupted}</h2><p>{view.reason && t.reason[view.reason]}</p><p className="interruption-score">{t.notScored}</p><button className="primary-button" disabled={busy} onClick={() => start()}>{busy ? t.preparing : t.startFresh}</button></section> : <>
+        {view.phase === 'complete' && view.result ? <div className="results" aria-live="polite"><div className="score-banner"><span>{t.score}</span><strong>{t.number(view.result.score)}<small>/ 100</small></strong><p>{t.scoreHint}</p></div><div className="stats-grid"><ChannelStats t={t} label={t.position} result={view.result.visual}/>{view.result.audio && <ChannelStats t={t} label={t.audio} result={view.result.audio}/>}</div><div className="result-actions"><button className="primary-button" disabled={busy} onClick={() => start(view.result!.nextN)}>{t.continueAt(view.result.nextN)} <span aria-hidden="true">↗</span></button>{view.result.nextN !== config.n && <button className="secondary-button" disabled={busy} onClick={() => start()}>{t.repeat(config.n)}</button>}<button className="text-button" disabled={busy} onClick={adjust}>{t.adjust}</button></div></div> : view.phase === 'interrupted' ? <section className="interruption-card" aria-labelledby="interruption-title"><span aria-hidden="true">↺</span><h2 id="interruption-title" ref={interruptionHeading} tabIndex={-1}>{t.roundInterrupted}</h2><p>{view.reason && t.reason[view.reason]}</p><p className="interruption-score">{t.notScored}</p><button className="primary-button" disabled={busy} onClick={() => start()}>{busy ? t.preparing : t.startFresh}</button></section> : <>
           <div className="game-region" ref={board} tabIndex={-1} aria-label={t.gameControls}>
             <div className={`field ${active ? 'is-active' : ''}`} style={{ '--grid': config.gridSize } as React.CSSProperties} aria-label={t.field(config.gridSize)}>
               {Array.from({ length: config.gridSize ** 2 }, (_, i) => <div key={i} className={`field-cell ${config.gridSize === 3 && i === 4 ? 'fixation' : ''} ${view.cue === i ? 'lit' : ''}`} data-active={view.cue === i ? 'true' : undefined} aria-hidden="true"><span/></div>)}
               {view.phase === 'countdown' && <div className="countdown" role="status">{t.number(view.countdown)}</div>}
             </div>
             <div className="round-status" aria-live="polite">{view.phase === 'warmup' ? t.warmupProgress(view.index + 1, config.n) : view.phase === 'running' ? t.trial(view.index - config.n + 1) : view.phase === 'countdown' ? t.settle : t.duration(config.trialMs)}</div>
-            <div className="answers">{(['visual', ...(config.mode === 'dual' ? ['audio'] : [])] as Channel[]).map(channel => <button key={channel} className={`answer-button ${view.answered[channel] !== undefined ? config.liveFeedback ? view.answered[channel] ? 'correct' : 'incorrect' : 'registered' : ''}`} disabled={view.phase !== 'running'} onPointerDown={e => { if (e.button !== 0) return; e.preventDefault(); answer(channel) }} onClick={e => { if (e.detail === 0) answer(channel) }}><span>{channel === 'visual' ? t.position : t.audio}</span><kbd>{channel === 'audio' ? 'A' : config.mode === 'dual' ? 'V' : t.space}</kbd><small>{view.answered[channel] === undefined ? t.match : config.liveFeedback ? view.answered[channel] ? t.correct : t.falseAlarm : t.registered}</small></button>)}</div>
+            <div className="answers">{(['visual', ...(config.mode === 'dual' ? ['audio'] : [])] as Channel[]).map(channel => <button key={channel} data-channel={channel} className={`answer-button ${view.answered[channel] !== undefined ? config.liveFeedback ? view.answered[channel] ? 'correct' : 'incorrect' : 'registered' : ''}`} disabled={view.phase !== 'running'} onPointerDown={e => { if (e.button !== 0) return; e.preventDefault(); answer(channel) }} onClick={e => { if (e.detail === 0) answer(channel) }}><span>{channel === 'visual' ? t.position : t.audio}</span><kbd>{channel === 'audio' ? 'A' : config.mode === 'dual' ? 'V' : t.space}</kbd><small>{view.answered[channel] === undefined ? t.match : config.liveFeedback ? view.answered[channel] ? t.correct : t.falseAlarm : t.registered}</small></button>)}</div>
           </div>
           <div className="start-row">{active ? <button className="secondary-button" onClick={() => session.current?.interrupt('stopped')}>{t.stop}</button> : <button className="primary-button" disabled={busy} onClick={() => start()}>{busy && !testFeedback ? t.preparing : t.begin}<span aria-hidden="true">↗</span></button>}<p>{config.mode === 'dual' ? t.dualHint : t.visualHint}</p></div>
         </>}

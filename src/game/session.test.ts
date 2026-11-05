@@ -5,10 +5,10 @@ const config: SessionConfig = { mode: 'dual', n: 2, gridSize: 3, liveFeedback: t
 function setup(overrides: Partial<SessionConfig> = {}) {
   vi.useFakeTimers(); let now = 0
   const clock: Clock = { now: () => now, schedule: (cb, delay) => setTimeout(cb, delay), cancel: clearTimeout }
-  const sound = vi.fn(), stop = vi.fn()
-  const session = new Session({ ...config, ...overrides }, vi.fn(), sound, stop, clock, seededRandom(3))
+  const changed = vi.fn(), sound = vi.fn(), stop = vi.fn()
+  const session = new Session({ ...config, ...overrides }, changed, sound, stop, clock, seededRandom(3))
   const advance = (ms: number) => { for (let i = 0; i < ms; i++) { now++; vi.advanceTimersByTime(1) } }
-  return { session, advance, sound, stop, clock, setNow: (value: number) => { now = value } }
+  return { session, advance, changed, sound, stop, clock, setNow: (value: number) => { now = value } }
 }
 afterEach(() => vi.useRealTimers())
 describe('session timing', () => {
@@ -24,6 +24,55 @@ describe('session timing', () => {
     const { session: s, advance, sound } = setup(); s.start(); advance(3100); s.interrupt('hidden'); const count = sound.mock.calls.length
     advance(9000); expect(s.view.phase).toBe('interrupted'); expect(sound).toHaveBeenCalledTimes(count)
     s.start(); expect(s.view.phase).toBe('countdown'); expect(s.view.result).toBeUndefined()
+  })
+  it('keeps a synchronous playback failure interrupted without resuming or scoring', () => {
+    const { session: s, advance, sound } = setup()
+    sound.mockImplementationOnce(() => s.interrupt('audio'))
+    s.start(); advance(3000)
+    expect(s.view).toMatchObject({ phase: 'interrupted', reason: 'audio', index: 0, cue: null })
+
+    advance(s.trials.length * config.trialMs)
+    expect(s.view.phase).toBe('interrupted')
+    expect(s.view.result).toBeUndefined()
+    expect(sound).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+  it('does not play a cue after its published view synchronously interrupts the round', () => {
+    const { session: s, advance, changed, sound } = setup()
+    changed.mockImplementation(view => { if (view.phase === 'warmup') s.interrupt('hidden') })
+    s.start(); advance(3000)
+
+    expect(s.view).toMatchObject({ phase: 'interrupted', reason: 'hidden', cue: null })
+    expect(sound).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+  it('does not start ticking after the initial countdown view synchronously interrupts the round', () => {
+    const { session: s, advance, changed, sound } = setup()
+    changed.mockImplementation(view => { if (view.phase === 'countdown') s.interrupt('hidden') })
+    s.start(); advance(3000)
+
+    expect(s.view).toMatchObject({ phase: 'interrupted', reason: 'hidden', index: -1, cue: null })
+    expect(sound).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+  it.each(['stop', 'restart'] as const)('does not leave work from a tick that synchronously triggers %s during playback', action => {
+    const { session: s, advance, sound } = setup()
+    sound.mockImplementationOnce(() => { if (action === 'restart') s.start(); else s.stop() })
+    s.start(); advance(3000)
+
+    expect(vi.getTimerCount()).toBe(action === 'restart' ? 1 : 0)
+    if (action === 'restart') {
+      expect(s.view.phase).toBe('countdown')
+      advance(3000)
+      expect(s.view).toMatchObject({ phase: 'warmup', index: 0 })
+      expect(sound).toHaveBeenCalledTimes(2)
+      expect(vi.getTimerCount()).toBe(1)
+    } else {
+      advance(s.trials.length * config.trialMs)
+      expect(s.view.index).toBe(0)
+      expect(s.view.result).toBeUndefined()
+      expect(sound).toHaveBeenCalledTimes(1)
+    }
   })
   it('interrupts instead of skipping stimuli after a clock stall', () => {
     const { session: s, setNow } = setup(); s.start(); setNow(4500); vi.advanceTimersToNextTimer(); expect(s.view.phase).toBe('interrupted')

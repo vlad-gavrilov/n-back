@@ -12,24 +12,27 @@ export class Session {
   private actualOnset = 0
   private generation = 0
   constructor(readonly config: SessionConfig, private changed: (view: SessionView) => void, private play: (letter: string) => void, private stopSound: () => void, private clock: Clock = browserClock, private random = Math.random) {}
-  start() { this.stop(); this.trials = generateTrials(this.config, this.random); this.responses = []; this.epoch = this.clock.now() + 3000; this.publish({ phase: 'countdown', countdown: 3, index: -1, cue: null, answered: {} }); this.tick() }
+  start() { this.stop(); const generation = this.generation; this.trials = generateTrials(this.config, this.random); this.responses = []; this.epoch = this.clock.now() + 3000; this.publish({ phase: 'countdown', countdown: 3, index: -1, cue: null, answered: {} }); if (generation === this.generation) this.tick() }
   private publish(next: SessionView) { this.view = next; this.changed({ ...next }) }
   private tick = () => {
+    const generation = this.generation
     const now = this.clock.now(), elapsed = now - this.epoch
-    if (elapsed < 0) { this.publish({ ...this.view, countdown: Math.ceil(-elapsed / 1000) }); this.queue(Math.min(1000, -elapsed)); return }
+    if (elapsed < 0) { this.publish({ ...this.view, countdown: Math.ceil(-elapsed / 1000) }); this.queue(Math.min(1000, -elapsed), generation); return }
     const index = Math.floor(elapsed / this.config.trialMs), offset = elapsed % this.config.trialMs
     if (index !== this.view.index) {
       if (offset > 250 || index > this.view.index + 1 || this.view.cue !== null) { this.interrupt('timing'); return }
       if (index >= this.trials.length) { this.stop(); this.publish({ ...this.view, phase: 'complete', cue: null, result: scoreRound(this.config, this.trials, this.responses) }); return }
       this.actualOnset = now
       this.publish({ phase: index < this.config.n ? 'warmup' : 'running', countdown: 0, index, cue: this.trials[index].position, answered: {} })
+      if (generation !== this.generation) return
       const letter = this.trials[index].letter
       if (letter) this.play(letter)
     } else if (now - this.actualOnset >= CUE_MS && this.view.cue !== null) this.publish({ ...this.view, cue: null })
-    this.queue(this.view.cue !== null ? this.actualOnset + CUE_MS - now : this.config.trialMs - offset)
+    this.queue(this.view.cue !== null ? this.actualOnset + CUE_MS - now : this.config.trialMs - offset, generation)
   }
-  private queue(delay: number) {
-    const generation = this.generation, due = this.clock.now() + delay
+  private queue(delay: number, generation: number) {
+    if (generation !== this.generation) return
+    const due = this.clock.now() + delay
     this.handle = this.clock.schedule(() => {
       if (generation !== this.generation) return
       if (this.clock.now() - due > 250) { this.interrupt('timing'); return }

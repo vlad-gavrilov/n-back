@@ -62,12 +62,30 @@ for (const width of [430, 1440]) test(`theme control and its artwork are centere
   }
 })
 
-for (const colorScheme of ['light', 'dark'] as const) for (const theme of ['light', 'dark']) test(`forced colors preserve native select arrows and keyboard input (${theme} theme, ${colorScheme} palette)`, async ({ page, browserName }) => {
+for (const colorScheme of ['light', 'dark'] as const) for (const theme of ['light', 'dark']) test(`forced colors preserve visible markers, native select arrows and keyboard input (${theme} theme, ${colorScheme} palette)`, async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', 'WebKit does not emulate forced colors')
+  await page.clock.install()
   await page.emulateMedia({ forcedColors: 'active', colorScheme })
   await page.goto('/')
   if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('.theme-toggle').click()
   expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true)
+  const colors = await page.locator('.field').evaluate(field => ({
+    background: getComputedStyle(field).backgroundColor,
+    idle: getComputedStyle(field.querySelector('.field-cell:not(.fixation) span')!).backgroundColor,
+    fixation: getComputedStyle(field.querySelector('.fixation span')!).backgroundColor,
+  }))
+  expect(colors.idle).not.toBe(colors.background)
+  expect(colors.fixation).not.toBe(colors.background)
+  await page.getByRole('button', { name: 'How to play' }).click()
+  const exampleColors = await page.locator('.example-field').first().evaluate(field => ({
+    background: getComputedStyle(field).backgroundColor,
+    idle: getComputedStyle(field.querySelector('i:not(.on)')!).backgroundColor,
+    active: getComputedStyle(field.querySelector('i.on')!).backgroundColor,
+  }))
+  expect(exampleColors.idle).not.toBe(exampleColors.background)
+  expect(exampleColors.active).not.toBe(exampleColors.background)
+  expect(exampleColors.active).not.toBe(exampleColors.idle)
+  await page.getByRole('button', { name: 'Close dialog' }).click()
   const fieldSize = page.getByRole('combobox', { name: 'Field size' })
   await expect(fieldSize).toHaveCSS('appearance', 'auto')
   await expect(fieldSize).toHaveCSS('background-image', 'none')
@@ -76,4 +94,11 @@ for (const colorScheme of ['light', 'dark'] as const) for (const theme of ['ligh
   await fieldSize.press('Enter')
   await expect(fieldSize).toHaveValue('4')
   await expect(page.locator('.field-cell')).toHaveCount(16)
+  await page.getByRole('button', { name: 'Begin session', exact: true }).click()
+  await page.clock.runFor(3000)
+  const stimulus = page.locator('.field-cell.lit span')
+  await expect(stimulus).toBeVisible()
+  const stimulusColor = await stimulus.evaluate(marker => getComputedStyle(marker).backgroundColor)
+  expect(stimulusColor).not.toBe(colors.background)
+  expect(stimulusColor).not.toBe(colors.idle)
 })
