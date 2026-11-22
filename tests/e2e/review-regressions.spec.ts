@@ -106,6 +106,30 @@ test('completed Dual results stay locked while Continue prepares sound and then 
   }
 })
 
+test('retry starts the recommended level selected on the results screen', async ({ page }) => {
+  await startRound(page, 'dual')
+  await page.clock.runFor(60000)
+  const next = page.getByRole('button', { name: 'Continue at 1-back' })
+  await expect(next).toBeVisible()
+  await page.evaluate(() => {
+    const context = (window as unknown as TestAudioWindow).__testAudioContext
+    const resume = context.resume.bind(context)
+    context.resume = async () => {
+      context.resume = resume
+      throw new DOMException('Audio is unavailable', 'NotAllowedError')
+    }
+  })
+  await next.click()
+  const alert = page.getByRole('alert')
+  await expect(alert).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Round complete' })).toBeVisible()
+  await alert.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  await expect(page.locator('.training-heading .mode-label')).toHaveText('Position + sound / 1-back')
+  await page.clock.runFor(6000)
+  await expect(page.getByText('Trial 1 of 20', { exact: true })).toBeVisible()
+})
+
 for (const phase of ['countdown', 'running']) test(`suspending a prepared Dual context does not interrupt a Visual ${phase}`, async ({ page }) => {
   await freezeClock(page)
   await page.goto('/')

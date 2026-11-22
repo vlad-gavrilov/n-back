@@ -29,7 +29,15 @@ npm run build
 npm run test:e2e
 ```
 
-Browser tests are silent: a shared fixture replaces Web Audio with an in-memory stub before the app loads. Tests still cover audio loading errors, timeouts, retry, interruption and Dual controls, but do not play or decode real recordings. Actual sound quality and playback are checked manually in the game on the target devices.
+Browser tests use a silent audio output and cover loading errors, timeouts, retry, interruption and Dual controls. One sound test decodes all eight bundled recordings with the browser's native offline audio decoder. Check pronunciation and speaker or headphone playback on the target device.
+
+## Where to make changes
+
+- `src/game/config.ts` defines the supported settings and round constants. `sequence.ts` generates the stimuli and `scoring.ts` computes statistics and the next level. `session.ts` schedules each cue with a monotonic clock, accepts responses and publishes the round state. The clock and random source can be replaced in tests.
+- `src/training/controller.ts` owns the selected settings, the current round and the pending sound operation. A failed start carries the requested level into the retry. Cancelling an operation also prevents a late completion from starting a round. `useTraining.ts` connects the controller to React and the page lifecycle.
+- `src/audio/player.ts` owns the Web Audio context, decoded letter buffers and playing sources. `src/input/` handles physical keys, focused button activation and focus indicators.
+- `src/App.tsx` composes the screen and routes dialogs and audio feedback. `src/components/` contains the settings, board, results and tutorial. `src/styles/` holds their styles and responsive rules.
+- `src/i18n/` contains the English and Russian dictionaries and number formats. `src/preferences/` synchronizes the selected language and theme with the document and browser storage.
 
 ## Playing
 

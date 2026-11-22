@@ -1,6 +1,6 @@
 import { test as base } from '@playwright/test'
 
-// UI tests never create a real audio context or send sound to the speakers
+// Replace the output context so browser tests can exercise the player silently.
 export const test = base.extend({
   page: async ({ page }, use) => {
     await page.addInitScript(() => {
@@ -13,9 +13,10 @@ export const test = base.extend({
         }
         async resume() { this.state = 'running' }
         async suspend() { this.state = 'suspended'; this.onstatechange?.() }
+        async close() { this.state = 'closed'; this.onstatechange?.() }
         async decodeAudioData() { return {} }
         createBufferSource() {
-          return { buffer: null, onended: null, connect() {}, start() {}, stop() {} }
+          return { buffer: null, onended: null, connect() {}, disconnect() {}, start() {}, stop() {} }
         }
       }
       Object.defineProperty(window, 'AudioContext', { value: SilentAudioContext, configurable: true, writable: true })

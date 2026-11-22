@@ -21,6 +21,29 @@ it('formats Russian step forms and parameters', () => {
   expect(dictionaries.ru.seconds(3000)).toBe('3 с')
   expect(dictionaries.en.seconds(6000)).toBe('6 s')
 })
+it('reuses Intl formatters when rendering different trial values', () => {
+  const formatValues = (n: number) => {
+    for (const t of Object.values(dictionaries)) {
+      t.number(n)
+      t.percent(n / 100)
+      t.milliseconds(n)
+      t.duration(n * 1000)
+      t.settingsHint(n)
+      t.secondUnit(n)
+    }
+  }
+  formatValues(1)
+  const numbers = vi.spyOn(Intl, 'NumberFormat')
+  const plurals = vi.spyOn(Intl, 'PluralRules')
+  try {
+    formatValues(2)
+    expect(numbers).not.toHaveBeenCalled()
+    expect(plurals).not.toHaveBeenCalled()
+  } finally {
+    numbers.mockRestore()
+    plurals.mockRestore()
+  }
+})
 it('defaults to English and restores only valid saved locales', () => {
   for (const [value, expected] of [[null,'en'],['fr','en'],['ru','ru'],['en','en']]) {
     vi.stubGlobal('localStorage', { getItem: () => value }); expect(initialLocale()).toBe(expected)

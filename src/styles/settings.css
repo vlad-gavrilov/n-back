@@ -1,0 +1,130 @@
+.settings {
+  border-right: 1px solid var(--line);
+  padding-right: 30px;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 38px;
+}
+
+.section-heading h2 {
+  font-size: 17px;
+  margin: 0;
+}
+
+.section-heading>span {
+  color: var(--accent);
+  font-size: 27px;
+}
+
+.segmented {
+  display: flex;
+  background: var(--field);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.segmented button {
+  flex: 1;
+  font-size: 13px;
+  border-radius: 9px;
+}
+
+.segmented button[aria-pressed=true] {
+  background: var(--surface);
+  box-shadow: 0 2px 5px #0001;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.stepper button {
+  width: 44px;
+  font-size: 23px;
+}
+
+.stepper output {
+  font-size: 30px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stepper small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.select-label {
+  display: block;
+  margin-bottom: 28px;
+}
+
+.select-label select {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  min-height: 48px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 12px;
+  color: var(--ink);
+}
+
+.check-label {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.check-label input {
+  width: 19px;
+  height: 19px;
+  accent-color: var(--accent);
+  margin: 0;
+}
+
+.check-label span {
+  font-weight: 600;
+}
+
+.check-label small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  font-weight: 400;
+  margin-top: 5px;
+}
+
+.settings-note {
+  border-top: 1px solid var(--line);
+  margin-top: 30px;
+  padding-top: 23px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.settings-note strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.settings-note p {
+  margin: 8px 0 0;
+}

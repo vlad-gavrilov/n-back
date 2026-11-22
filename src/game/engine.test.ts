@@ -23,7 +23,12 @@ describe('sequence contract', () => {
       }
     })
   }
-  it('replays the same seed', () => expect(generateTrials(config, seededRandom(42))).toEqual(generateTrials(config, seededRandom(42))))
+  it('replays a known sequence of positions and letters for the same seed', () => {
+    const trials = generateTrials(config, seededRandom(42))
+    expect(trials.map(trial => `${trial.position}${trial.letter}`).join(' ')).toBe(
+      '3R 0M 0F 0M 1H 0R 5H 0R 0H 2Q 5R 3J 5B 0M 6H 0Q 1H 0H 7W 5F 1W 2B',
+    )
+  })
   it('rejects unsupported configuration', () => { expect(() => generateTrials({ ...config, n: 0 })).toThrow(); expect(() => generateTrials({ ...config, trialMs: 1234 })).toThrow(); expect(() => generateTrials({ ...config, trialMs: 1000 })).not.toThrow() })
 })
 describe('results', () => {
@@ -37,7 +42,9 @@ describe('results', () => {
     const responses: ChannelResponse[] = [{ trial: 0, channel: 'visual' as const, reactionMs: 20 }]
     for (let i = config.n; i < trials.length; i++) for (const channel of ['visual', 'audio'] as const) {
       if (channel === 'visual' ? trials[i].position === trials[i - config.n].position : trials[i].letter === trials[i - config.n].letter) {
-        responses.push({ trial: i, channel, reactionMs: 250 }, { trial: i, channel, reactionMs: 900 })
+        for (const reactionMs of [Number.NaN, -1, config.trialMs, 250, 900]) {
+          responses.push({ trial: i, channel, reactionMs })
+        }
       }
     }
     responses.push({ trial: config.n, channel: 'audio', reactionMs: 3000 })

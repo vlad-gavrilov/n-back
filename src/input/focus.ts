@@ -7,4 +7,8 @@ export function installFocusModality() {
   }
   document.addEventListener('pointerdown', pointer, true)
   document.addEventListener('keydown', keyboard, true)
+  return () => {
+    document.removeEventListener('pointerdown', pointer, true)
+    document.removeEventListener('keydown', keyboard, true)
+  }
 }

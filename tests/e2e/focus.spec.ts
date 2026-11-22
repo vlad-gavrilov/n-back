@@ -1,22 +1,23 @@
 import { expect, test } from './fixtures'
+import { tabToNextControl } from './keyboard-navigation'
 
 test.use({ hasTouch: true, viewport: { width: 360, height: 800 } })
 
-test('touch dialogs return focus quietly and keyboard restores the indicator', async ({ page }) => {
+test('touch dialogs return focus quietly and keyboard restores the indicator', async ({ page, browserName }) => {
   await page.goto('/')
   const help = page.getByRole('button', { name: 'How to play', exact: true })
   await help.tap()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { level: 2 })).toBeFocused()
   expect(await dialog.getByRole('heading', { level: 2 }).evaluate(el => getComputedStyle(el).outlineStyle)).toBe('none')
-  await page.keyboard.press('Tab')
+  await tabToNextControl(page, browserName)
   const english = dialog.getByRole('button', { name: 'English', exact: true })
   await expect(english).toBeFocused()
   expect(await english.evaluate(el => getComputedStyle(el).outlineStyle)).toBe('solid')
   await dialog.getByRole('button', { name: 'Close dialog' }).tap()
   await expect(help).toBeFocused()
   expect(await help.evaluate(el => getComputedStyle(el).outlineStyle)).toBe('none')
-  await page.keyboard.press('Tab')
+  await tabToNextControl(page, browserName)
   expect(await page.evaluate(() => getComputedStyle(document.activeElement!).outlineStyle)).toBe('solid')
 })
 

@@ -1,0 +1,219 @@
+.training {
+  max-width: 780px;
+  min-width: 0;
+}
+
+.training-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 26px;
+}
+
+.mode-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+h1 {
+  font-size: clamp(26px,3.1vw,43px);
+  line-height: 1.22;
+  letter-spacing: -1.7px;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Stimulus field */
+
+.game-region {
+  border-radius: 28px;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: repeat(var(--grid),minmax(0,1fr));
+  grid-template-rows: repeat(var(--grid),minmax(0,1fr));
+  aspect-ratio: 1;
+  max-width: 380px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+  background: var(--field);
+  border-radius: 32px;
+  padding: 27px;
+  gap: 14px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.field-cell {
+  display: grid;
+  place-items: center;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.field-cell span {
+  width: 28%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--dot);
+}
+
+.field-cell.lit span {
+  width: 85%;
+  background: var(--accent);
+  box-shadow: 0 0 0 6px var(--accent-soft);
+}
+
+.field-cell.fixation span {
+  width: 7px;
+  height: 7px;
+  border-radius: 0;
+  background: var(--muted);
+  transform: rotate(45deg);
+}
+
+.countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--field);
+  border-radius: 32px;
+}
+
+.countdown {
+  font-size: 90px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+/* Interrupted round */
+
+.interruption-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.interruption-card>span {
+  font-size: 36px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.interruption-card h2 {
+  margin: 0;
+  font-size: 21px;
+  letter-spacing: -.5px;
+  text-wrap: balance;
+}
+
+.interruption-card p {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.interruption-card .interruption-score {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.interruption-card .primary-button {
+  margin-top: 6px;
+}
+
+/* Responses and round actions */
+
+.round-status {
+  font-size: 12px;
+  text-align: center;
+  color: var(--muted);
+  margin: 20px 0;
+  min-height: 20px;
+}
+
+.answers {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  max-width: 480px;
+  margin: auto;
+}
+
+.answer-button {
+  flex: 1;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 3px 16px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 12px 20px;
+  user-select: none;
+}
+
+.answer-button>span {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.answer-button small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+kbd {
+  font: 11px Manrope,system-ui,sans-serif;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 3px 7px;
+}
+
+.answer-button.correct {
+  border-color: var(--good);
+  color: var(--good);
+}
+
+.answer-button.incorrect {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.answer-button.registered {
+  border-color: var(--accent);
+}
+
+.start-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin-top: 24px;
+}
+
+.start-row p {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+  max-width: 400px;
+}

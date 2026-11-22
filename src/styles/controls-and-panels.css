@@ -1,0 +1,289 @@
+/* Shared buttons */
+
+.primary-button,
+.secondary-button {
+  border-radius: 12px;
+  min-height: 50px;
+  padding: 13px 25px;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 35px;
+}
+
+.primary-button {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+:root[data-theme=dark] .primary-button {
+  color: var(--bg);
+}
+
+.primary-button>span {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.secondary-button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.text-button {
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.icon-button {
+  width: 44px;
+  font-size: 27px;
+}
+
+.mobile-settings {
+  display: none;
+}
+
+/* Footer */
+
+footer {
+  border-top: 1px solid var(--line);
+  padding: 24px 0 32px;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+footer>span {
+  margin-right: auto;
+}
+
+footer button {
+  font-size: 11px;
+  padding: 0;
+}
+
+/* Audio errors */
+
+.error-message {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.error-message button {
+  display: block;
+  text-decoration: underline;
+}
+
+/* Round results */
+
+.results {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 28px;
+}
+
+.score-banner>span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.score-banner strong {
+  display: block;
+  font-size: 74px;
+  letter-spacing: -4px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.score-banner small {
+  font-size: 17px;
+  color: var(--muted);
+  letter-spacing: 0;
+  margin-left: 12px;
+}
+
+.score-banner p {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+  gap: 28px;
+  margin-top: 25px;
+}
+
+.channel-stats h3 {
+  font-size: 15px;
+}
+
+.channel-stats dl {
+  margin: 0;
+}
+
+.channel-stats dl>div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+dt {
+  color: var(--muted);
+}
+
+dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.result-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+/* Dialogs */
+
+dialog {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 28px;
+  width: min(520px,calc(100% - 32px));
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  box-shadow: var(--shadow);
+}
+
+dialog::backdrop {
+  background: #11182788;
+  backdrop-filter: blur(5px);
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.dialog-header h2 {
+  font-size: 23px;
+  letter-spacing: -.7px;
+  margin: 0;
+}
+
+/* Tutorial and research */
+
+.lesson h3 {
+  font-size: 21px;
+}
+
+.lesson p,
+.research-links p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+.lesson .primary-button {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.example-sequence {
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+  margin: 28px 0;
+}
+
+.example-sequence>div {
+  width: 27%;
+  text-align: center;
+}
+
+.example-field {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 6px;
+  padding: 12px;
+  background: var(--field);
+  border-radius: 10px;
+  aspect-ratio: 1;
+}
+
+.example-field i {
+  border-radius: 50%;
+  background: var(--dot);
+}
+
+.example-field i.on {
+  background: var(--accent);
+}
+
+.example-sequence small {
+  display: block;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.research-links a {
+  display: block;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.research-links a span {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+/* Navigation sizing */
+
+.topbar nav {
+  min-width: 0;
+}
+
+.topbar nav>button:first-child {
+  min-width: 0;
+}
+
+/* Audio status */
+
+.audio-feedback {
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.audio-feedback[role=status] {
+  color: var(--muted);
+  margin: 12px 0 20px;
+}

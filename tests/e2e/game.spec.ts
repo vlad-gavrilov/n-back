@@ -65,6 +65,27 @@ test('dual sound failure is explicit and visual mode remains available', async (
   await page.getByRole('button', { name: 'Use visual mode' }).click()
   await expect(page.getByRole('button', { name: 'Visual', exact: true })).toHaveAttribute('aria-pressed', 'true')
 })
+
+test('the Dual sound test decodes all eight bundled recordings in the browser', async ({ page }) => {
+  await page.goto('/')
+  const durations = await page.evaluateHandle(() => {
+    const clips: number[] = []
+    const decoder = new OfflineAudioContext(1, 1, 22050)
+    AudioContext.prototype.decodeAudioData = async data => {
+      const buffer = await decoder.decodeAudioData(data)
+      clips.push(buffer.duration)
+      return buffer
+    }
+    return clips
+  })
+  await page.getByRole('button', { name: 'Dual', exact: true }).click()
+  await page.getByRole('button', { name: 'Test sound', exact: true }).click()
+  await expect(page.getByText('Test sound played.', { exact: true })).toBeVisible()
+  const decoded = await durations.jsonValue()
+  expect(decoded).toHaveLength(8)
+  expect(Math.min(...decoded)).toBeGreaterThan(0)
+})
+
 for (const locale of locales) for (const width of [320, 430, 744, 756, 1024, 1440]) test(`layout at ${width}px in both themes (${locale})`, async ({ page }) => {
   await page.setViewportSize({ width, height: width === 430 ? 932 : 850 })
   await page.goto('/')

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from './fixtures'
+import { tabToNextControl } from './keyboard-navigation'
 import { dictionaries, localeNames, locales } from '../../src/i18n'
 
 async function dualSettings(page: Page) {
@@ -60,7 +61,7 @@ test('sound test timeout is visible, translates and offers visual mode', async (
   } finally { release() }
 })
 
-test('A/V work after Tab onto either response button', async ({ page }) => {
+test('A/V work after Tab onto either response button', async ({ page, browserName }) => {
   await page.clock.install()
   await page.goto('/')
   await page.getByRole('button', { name: 'Dual', exact: true }).click()
@@ -69,24 +70,24 @@ test('A/V work after Tab onto either response button', async ({ page }) => {
   await page.clock.runFor(9000)
   const position = page.getByRole('button', { name: /^Position/ })
   const audio = page.getByRole('button', { name: /^Audio/ })
-  await page.keyboard.press('Tab')
+  await tabToNextControl(page, browserName)
   await expect(position).toBeFocused()
   for (const key of ['v', 'a']) await page.keyboard.press(key)
   for (const button of [position, audio]) await expect(button).toContainText(/Correct|False alarm/)
   await page.clock.runFor(3000)
-  await page.keyboard.press('Tab')
+  await tabToNextControl(page, browserName)
   await expect(audio).toBeFocused()
   for (const key of ['v', 'a']) await page.keyboard.press(key)
   for (const button of [position, audio]) await expect(button).toContainText(/Correct|False alarm/)
 })
 
-test('native response keys act once and held Enter does not answer later trials', async ({ page }) => {
+test('native response keys act once and held Enter does not answer later trials', async ({ page, browserName }) => {
   await page.clock.install()
   await page.goto('/')
   await page.getByRole('button', { name: 'Begin session', exact: true }).click()
   await page.clock.runFor(9000)
   const position = page.getByRole('button', { name: /^Position/ })
-  await page.keyboard.press('Tab')
+  await tabToNextControl(page, browserName)
   await expect(position).toBeFocused()
   await page.keyboard.down('Enter')
   await expect(position).toContainText(/Correct|False alarm/)

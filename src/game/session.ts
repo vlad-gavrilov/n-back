@@ -1,51 +1,186 @@
-import { CUE_MS, generateTrials, isTarget, scoreRound, type Channel, type ChannelResponse, type SessionConfig, type SessionResult, type Trial } from './engine'
+import { CUE_MS, type Channel, type SessionConfig } from './config'
+import { scoreRound, type ChannelResponse, type SessionResult } from './scoring'
+import { generateTrials, isTarget, type Trial } from './sequence'
+
+const COUNTDOWN_SECONDS = 3
+const SECOND_MS = 1000
+const MAX_LATENESS_MS = 250
+
 export type InterruptionReason = 'timing' | 'hidden' | 'orientation' | 'audio' | 'stopped'
-export interface SessionView { phase: 'idle' | 'countdown' | 'warmup' | 'running' | 'complete' | 'interrupted'; countdown: number; index: number; cue: number | null; answered: Partial<Record<Channel, boolean>>; result?: SessionResult; reason?: InterruptionReason }
-export interface Clock { now(): number; schedule(callback: () => void, delay: number): ReturnType<typeof setTimeout>; cancel(handle: ReturnType<typeof setTimeout>): void }
-export const browserClock: Clock = { now: () => performance.now(), schedule: (cb, delay) => setTimeout(cb, delay), cancel: handle => clearTimeout(handle) }
+type ActivePhase = 'countdown' | 'warmup' | 'running'
+type FinalStatus =
+  | { phase: 'complete'; result: SessionResult; reason?: never }
+  | { phase: 'interrupted'; reason: InterruptionReason; result?: never }
+
+export type SessionView = {
+  countdown: number
+  index: number
+  cue: number | null
+  answered: Partial<Record<Channel, boolean>>
+} & (
+  | { phase: 'idle' | ActivePhase; result?: never; reason?: never }
+  | (FinalStatus & { cue: null })
+)
+
+export function createIdleView(): SessionView & { phase: 'idle' } {
+  return { phase: 'idle', countdown: COUNTDOWN_SECONDS, index: -1, cue: null, answered: {} }
+}
+
+export function isSessionActive(phase: SessionView['phase']): phase is ActivePhase {
+  return phase === 'countdown' || phase === 'warmup' || phase === 'running'
+}
+
+type TimerHandle = ReturnType<typeof setTimeout>
+export interface Clock {
+  now(): number
+  schedule(callback: () => void, delay: number): TimerHandle
+  cancel(handle: TimerHandle): void
+}
+
+export const browserClock: Clock = {
+  now: () => performance.now(),
+  schedule: (callback, delay) => setTimeout(callback, delay),
+  cancel: handle => clearTimeout(handle),
+}
+
+interface Round {
+  active: true
+  firstTrialAt: number
+  shownAt: number
+  responses: ChannelResponse[]
+  timer?: TimerHandle
+}
+
 export class Session {
-  view: SessionView = { phase: 'idle', countdown: 3, index: -1, cue: null, answered: {} }
+  view: SessionView = createIdleView()
   trials: Trial[] = []
-  private responses: ChannelResponse[] = []
-  private handle?: ReturnType<typeof setTimeout>
-  private epoch = 0
-  private actualOnset = 0
-  private generation = 0
-  constructor(readonly config: SessionConfig, private changed: (view: SessionView) => void, private play: (letter: string) => void, private stopSound: () => void, private clock: Clock = browserClock, private random = Math.random) {}
-  start() { this.stop(); const generation = this.generation; this.trials = generateTrials(this.config, this.random); this.responses = []; this.epoch = this.clock.now() + 3000; this.publish({ phase: 'countdown', countdown: 3, index: -1, cue: null, answered: {} }); if (generation === this.generation) this.tick() }
-  private publish(next: SessionView) { this.view = next; this.changed({ ...next }) }
-  private tick = () => {
-    const generation = this.generation
-    const now = this.clock.now(), elapsed = now - this.epoch
-    if (elapsed < 0) { this.publish({ ...this.view, countdown: Math.ceil(-elapsed / 1000) }); this.queue(Math.min(1000, -elapsed), generation); return }
-    const index = Math.floor(elapsed / this.config.trialMs), offset = elapsed % this.config.trialMs
-    if (index !== this.view.index) {
-      if (offset > 250 || index > this.view.index + 1 || this.view.cue !== null) { this.interrupt('timing'); return }
-      if (index >= this.trials.length) { this.stop(); this.publish({ ...this.view, phase: 'complete', cue: null, result: scoreRound(this.config, this.trials, this.responses) }); return }
-      this.actualOnset = now
-      this.publish({ phase: index < this.config.n ? 'warmup' : 'running', countdown: 0, index, cue: this.trials[index].position, answered: {} })
-      if (generation !== this.generation) return
-      const letter = this.trials[index].letter
-      if (letter) this.play(letter)
-    } else if (now - this.actualOnset >= CUE_MS && this.view.cue !== null) this.publish({ ...this.view, cue: null })
-    this.queue(this.view.cue !== null ? this.actualOnset + CUE_MS - now : this.config.trialMs - offset, generation)
+  private round: Round | { active: false } = { active: false }
+
+  constructor(
+    readonly config: SessionConfig,
+    private readonly changed: (view: SessionView) => void,
+    private readonly play: (letter: string) => void,
+    private readonly stopSound: () => void,
+    private readonly clock: Clock = browserClock,
+    private readonly random = Math.random,
+  ) {}
+
+  start(): void {
+    if (!this.cancelRound()) return
+    this.trials = generateTrials(this.config, this.random)
+    const round: Round = {
+      active: true,
+      firstTrialAt: this.clock.now() + COUNTDOWN_SECONDS * SECOND_MS,
+      shownAt: 0,
+      responses: [],
+    }
+    this.round = round
+    this.publish({ ...createIdleView(), phase: 'countdown' })
+    this.tick(round)
   }
-  private queue(delay: number, generation: number) {
-    if (generation !== this.generation) return
-    const due = this.clock.now() + delay
-    this.handle = this.clock.schedule(() => {
-      if (generation !== this.generation) return
-      if (this.clock.now() - due > 250) { this.interrupt('timing'); return }
-      this.tick()
-    }, delay)
+
+  respond(channel: Channel): void {
+    const { round, view } = this
+    if (!round.active || view.phase !== 'running' || view.answered[channel] !== undefined) return
+    if (channel === 'audio' && this.config.mode !== 'dual') return
+
+    const now = this.clock.now()
+    const reactionMs = now - round.shownAt
+    const deadline = this.nextBoundary(round, view.index)
+    if (reactionMs < 0 || reactionMs >= this.config.trialMs || now >= deadline) return
+
+    round.responses.push({ trial: view.index, channel, reactionMs })
+    const correct = isTarget(this.trials, view.index, this.config.n, channel)
+    this.publish({ ...view, answered: { ...view.answered, [channel]: correct } })
   }
-  respond(channel: Channel) {
-    if (this.view.phase !== 'running' || (channel === 'audio' && this.config.mode !== 'dual') || this.view.answered[channel] !== undefined) return
-    const reactionMs = this.clock.now() - this.actualOnset
-    if (reactionMs < 0 || reactionMs >= this.config.trialMs || this.clock.now() >= this.epoch + (this.view.index + 1) * this.config.trialMs) return
-    this.responses.push({ trial: this.view.index, channel, reactionMs })
-    this.publish({ ...this.view, answered: { ...this.view.answered, [channel]: isTarget(this.trials, this.view.index, this.config.n, channel) } })
+
+  stop(): void {
+    this.cancelRound()
   }
-  stop() { this.generation++; if (this.handle !== undefined) this.clock.cancel(this.handle); this.stopSound() }
-  interrupt(reason: InterruptionReason) { if (['countdown', 'warmup', 'running'].includes(this.view.phase)) { this.stop(); this.publish({ ...this.view, phase: 'interrupted', cue: null, reason }) } }
+
+  interrupt(reason: InterruptionReason): void {
+    if (this.round.active && isSessionActive(this.view.phase)) this.finish({ phase: 'interrupted', reason })
+  }
+
+  private cancelRound(): boolean {
+    const round = this.round
+    const stopped = { active: false } as const
+    this.round = stopped
+    if (round.active && round.timer !== undefined) this.clock.cancel(round.timer)
+    this.stopSound()
+    // Sound cleanup can synchronously start or stop the session again.
+    return this.round === stopped
+  }
+
+  private publish(view: SessionView): void {
+    this.view = view
+    this.changed({ ...view })
+  }
+
+  private finish(status: FinalStatus): void {
+    const { countdown, index, answered } = this.view
+    if (this.cancelRound()) this.publish({ ...status, countdown, index, answered, cue: null })
+  }
+
+  private nextBoundary(round: Round, index: number): number {
+    // With no following stimulus, the final response window runs from the actual onset.
+    const { trialMs } = this.config
+    return index === this.trials.length - 1
+      ? round.shownAt + trialMs
+      : round.firstTrialAt + (index + 1) * trialMs
+  }
+
+  private tick(round: Round, now = this.clock.now()): void {
+    if (this.round !== round) return
+    const elapsed = now - round.firstTrialAt
+    if (elapsed < 0) {
+      this.publish({ ...this.view, countdown: Math.ceil(-elapsed / SECOND_MS) })
+      this.schedule(round, Math.min(now + SECOND_MS, round.firstTrialAt))
+      return
+    }
+
+    const boundary = this.nextBoundary(round, this.view.index)
+    if (now >= boundary) {
+      if (now - boundary > MAX_LATENESS_MS || this.view.cue !== null) {
+        this.interrupt('timing')
+        return
+      }
+      const nextIndex = this.view.index + 1
+      if (nextIndex >= this.trials.length) {
+        this.finish({ phase: 'complete', result: scoreRound(this.config, this.trials, round.responses) })
+        return
+      }
+      this.showTrial(round, nextIndex, now)
+    } else if (this.view.cue !== null && now >= round.shownAt + CUE_MS) {
+      this.publish({ ...this.view, cue: null })
+    }
+
+    const nextAt = this.view.cue === null ? boundary : round.shownAt + CUE_MS
+    this.schedule(round, nextAt)
+  }
+
+  private showTrial(round: Round, index: number, now: number): void {
+    const trial = this.trials[index]
+    round.shownAt = now
+    this.publish({
+      phase: index < this.config.n ? 'warmup' : 'running',
+      countdown: 0,
+      index,
+      cue: trial.position,
+      answered: {},
+    })
+    if (this.round === round && trial.letter) this.play(trial.letter)
+  }
+
+  private schedule(round: Round, dueAt: number): void {
+    // Publishing a view or playing audio can synchronously stop or restart the round.
+    if (this.round !== round) return
+    round.timer = this.clock.schedule(() => {
+      if (this.round !== round) return
+      round.timer = undefined
+      const now = this.clock.now()
+      if (now - dueAt > MAX_LATENESS_MS) this.interrupt('timing')
+      else this.tick(round, now)
+    }, Math.max(0, dueAt - this.clock.now()))
+  }
 }
