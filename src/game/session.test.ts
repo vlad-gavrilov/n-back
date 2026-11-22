@@ -295,6 +295,42 @@ describe('session timing', () => {
     expect(session.view.index).toBe(session.trials.length - 1)
   })
 
+  it.each([
+    [4238, 'running'],
+    [4250, 'running'],
+    [4250.25, 'interrupted'],
+  ] as const)('preserves a blank between delayed cues and observes the original onset budget at %f ms', (nextOnset, phase) => {
+    const { session, advance, setNow, sound } = setup({ n: 1, trialMs: 1000 })
+    session.start()
+    advance(2999)
+    const wakeAt = (time: number) => { setNow(time); vi.advanceTimersToNextTimer() }
+    wakeAt(3240) // First cue shown 240 ms late.
+    expect(session.view.index).toBe(0)
+    wakeAt(3988) // Cue cleared 248 ms late, 12 ms before the next nominal onset.
+    expect(session.view.cue).toBeNull()
+    wakeAt(4237.75) // A fractional timeout may fire just before the reserved gap ends.
+    expect(session.view).toMatchObject({ phase: 'warmup', cue: null })
+    expect(sound).toHaveBeenCalledTimes(1)
+    wakeAt(nextOnset)
+    expect(session.view.phase).toBe(phase)
+    if (phase === 'interrupted') {
+      expect(session.view.reason).toBe('timing')
+      expect(session.view.result).toBeUndefined()
+      expect(sound).toHaveBeenCalledTimes(1)
+      return
+    }
+    expect(session.view.index).toBe(1)
+    expect(sound).toHaveBeenCalledTimes(2)
+    session.respond('visual', nextOnset - 1)
+    expect(session.view.answered).toEqual({})
+    session.respond('visual', nextOnset)
+    expect(session.view.answered.visual).toBeDefined()
+    wakeAt(nextOnset + 500)
+    expect(session.view.cue).toBeNull()
+    wakeAt(5000)
+    expect(session.view.index).toBe(2)
+  })
+
   it.each(['visual', 'dual'] as const)('interrupts instead of merging one-second stimuli after accepted delays (%s)', mode => {
     const { session: s, advance, setNow, sound } = setup({ mode, n: 1, trialMs: 1000 }); s.start()
     const target = s.trials.findIndex((trial, i, trials) => i > 1 && trial.position === trials[i - 1].position)

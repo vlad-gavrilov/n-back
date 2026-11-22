@@ -21,6 +21,47 @@ async function startRound(page: Page, mode: 'visual' | 'dual') {
   await expect(page.getByText('Trial 1 of 20', { exact: true })).toBeVisible()
 }
 
+test('repeated positions have blank frames between them after two delayed timers', async ({ page }) => {
+  await freezeClock(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Decrease N', exact: true }).click()
+  const faster = page.getByRole('button', { name: 'Decrease interval', exact: true })
+  await faster.click()
+  await faster.click()
+  // Leave the target list in order so the first scored position repeats the warm-up.
+  await page.evaluate(() => { Math.random = () => 0.999 })
+  // Offset the start so a 12 ms gap falls between two animation frames.
+  await page.clock.runFor(13)
+  await page.getByRole('button', { name: 'Begin session', exact: true }).click()
+  await page.clock.runFor(2990)
+  await page.clock.fastForward(250)
+  const lit = page.locator('.field-cell.lit')
+  const position = () => lit.evaluate(cell => [...cell.parentElement!.children].indexOf(cell))
+  await expect(lit).toHaveCount(1)
+  const warmupPosition = await position()
+
+  await page.clock.runFor(499)
+  await page.clock.fastForward(249)
+  await expect(lit).toHaveCount(0)
+  const frames = await page.evaluateHandle(() => {
+    const markerVisible: boolean[] = []
+    function sample() {
+      markerVisible.push(Boolean(document.querySelector('.field-cell.lit')))
+      if (markerVisible.length < 2) requestAnimationFrame(sample)
+    }
+    requestAnimationFrame(sample)
+    return markerVisible
+  })
+  await page.clock.runFor(250)
+  await expect(page.getByText('Trial 1 of 20', { exact: true })).toBeVisible()
+  expect(await position()).toBe(warmupPosition)
+  await page.keyboard.press('Space')
+  await page.clock.runFor(20000)
+  await expect(page.getByRole('heading', { name: 'Round complete' })).toBeVisible()
+  await expect(page.getByText('Hits', { exact: true }).locator('..').locator('dd')).toHaveText('1')
+  expect(await frames.jsonValue()).toEqual([false, false])
+})
+
 for (const { mode, channel, key } of [
   { mode: 'visual', channel: 'Position', key: 'Space' },
   { mode: 'dual', channel: 'Audio', key: 'Space' },

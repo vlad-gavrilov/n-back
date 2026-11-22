@@ -1,10 +1,11 @@
-import { CUE_MS, type Channel, type SessionConfig } from './config'
+import { CUE_MS, TRIAL_MS_OPTIONS, type Channel, type SessionConfig } from './config'
 import { scoreRound, type ChannelResponse, type SessionResult } from './scoring'
 import { generateTrials, isTarget, type Trial } from './sequence'
 
 const COUNTDOWN_SECONDS = 3
 const SECOND_MS = 1000
 const MAX_LATENESS_MS = 250
+const MIN_BLANK_MS = Math.min(...TRIAL_MS_OPTIONS) - CUE_MS - MAX_LATENESS_MS
 
 export type InterruptionReason = 'timing' | 'hidden' | 'orientation' | 'audio' | 'stopped'
 type ActivePhase = 'countdown' | 'warmup' | 'running'
@@ -146,8 +147,7 @@ export class Session {
       return
     }
 
-    const current = round.windows[this.view.index]
-    const boundary = current?.deadline ?? round.firstTrialAt
+    const boundary = round.windows[this.view.index]?.deadline ?? round.firstTrialAt
     if (now >= boundary) {
       if (now - boundary > MAX_LATENESS_MS || this.view.cue !== null) {
         this.interrupt('timing')
@@ -163,11 +163,11 @@ export class Session {
       return
     }
 
-    const cueEndsAt = current.shownAt + CUE_MS
-    if (this.view.cue !== null && now >= cueEndsAt) {
-      this.publish({ ...this.view, cue: null })
-    }
-    this.schedule(round, this.view.cue === null ? boundary : cueEndsAt)
+    const lastTrial = this.view.index === this.trials.length - 1
+    this.publish({ ...this.view, cue: null })
+    // A late onset and a late clear can consume most of the same blank interval.
+    const nextAt = lastTrial ? boundary : Math.max(boundary, this.clock.now() + MIN_BLANK_MS)
+    this.schedule(round, nextAt)
   }
 
   private showTrial(round: Round, index: number, now: number): void {
@@ -195,7 +195,8 @@ export class Session {
       if (this.round !== round) return
       round.timer = undefined
       const now = this.clock.now()
-      if (now - dueAt > MAX_LATENESS_MS) this.interrupt('timing')
+      if (now < dueAt) this.schedule(round, dueAt)
+      else if (now - dueAt > MAX_LATENESS_MS) this.interrupt('timing')
       else this.tick(round, now)
     }, Math.max(0, dueAt - this.clock.now()))
   }
