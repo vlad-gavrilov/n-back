@@ -43,10 +43,15 @@ export const browserClock: Clock = {
   cancel: handle => clearTimeout(handle),
 }
 
+interface TrialWindow {
+  shownAt: number
+  deadline: number
+}
+
 interface Round {
   active: true
   firstTrialAt: number
-  shownAt: number
+  windows: TrialWindow[]
   responses: ChannelResponse[]
   timer?: TimerHandle
 }
@@ -71,7 +76,7 @@ export class Session {
     const round: Round = {
       active: true,
       firstTrialAt: this.clock.now() + COUNTDOWN_SECONDS * SECOND_MS,
-      shownAt: 0,
+      windows: [],
       responses: [],
     }
     this.round = round
@@ -79,18 +84,28 @@ export class Session {
     this.tick(round)
   }
 
-  respond(channel: Channel): void {
+  respond(channel: Channel, occurredAt?: number): void {
     const { round, view } = this
-    if (!round.active || view.phase !== 'running' || view.answered[channel] !== undefined) return
+    if (!round.active || view.phase !== 'running') return
     if (channel === 'audio' && this.config.mode !== 'dual') return
 
     const now = this.clock.now()
-    const reactionMs = now - round.shownAt
-    const deadline = this.nextBoundary(round, view.index)
-    if (reactionMs < 0 || reactionMs >= this.config.trialMs || now >= deadline) return
+    const pressedAt = occurredAt === undefined ? now : occurredAt
+    if (!Number.isFinite(pressedAt) || pressedAt > now) return
+    const index = round.windows.findIndex(({ shownAt, deadline }) => pressedAt >= shownAt && pressedAt < deadline)
+    if (index < this.config.n) return
 
-    round.responses.push({ trial: view.index, channel, reactionMs })
-    const correct = isTarget(this.trials, view.index, this.config.n, channel)
+    const { shownAt, deadline } = round.windows[index]
+    const reactionMs = pressedAt - shownAt
+    const existing = round.responses.find(response => response.trial === index && response.channel === channel)
+    if (existing) {
+      // Keyboard and pointer events can arrive in a different order from the presses.
+      existing.reactionMs = Math.min(existing.reactionMs, reactionMs)
+      return
+    }
+    round.responses.push({ trial: index, channel, reactionMs })
+    if (index !== view.index || now >= deadline) return
+    const correct = isTarget(this.trials, index, this.config.n, channel)
     this.publish({ ...view, answered: { ...view.answered, [channel]: correct } })
   }
 
@@ -122,14 +137,6 @@ export class Session {
     if (this.cancelRound()) this.publish({ ...status, countdown, index, answered, cue: null })
   }
 
-  private nextBoundary(round: Round, index: number): number {
-    // With no following stimulus, the final response window runs from the actual onset.
-    const { trialMs } = this.config
-    return index === this.trials.length - 1
-      ? round.shownAt + trialMs
-      : round.firstTrialAt + (index + 1) * trialMs
-  }
-
   private tick(round: Round, now = this.clock.now()): void {
     if (this.round !== round) return
     const elapsed = now - round.firstTrialAt
@@ -139,7 +146,8 @@ export class Session {
       return
     }
 
-    const boundary = this.nextBoundary(round, this.view.index)
+    const current = round.windows[this.view.index]
+    const boundary = current?.deadline ?? round.firstTrialAt
     if (now >= boundary) {
       if (now - boundary > MAX_LATENESS_MS || this.view.cue !== null) {
         this.interrupt('timing')
@@ -151,17 +159,25 @@ export class Session {
         return
       }
       this.showTrial(round, nextIndex, now)
-    } else if (this.view.cue !== null && now >= round.shownAt + CUE_MS) {
-      this.publish({ ...this.view, cue: null })
+      this.schedule(round, now + CUE_MS)
+      return
     }
 
-    const nextAt = this.view.cue === null ? boundary : round.shownAt + CUE_MS
-    this.schedule(round, nextAt)
+    const cueEndsAt = current.shownAt + CUE_MS
+    if (this.view.cue !== null && now >= cueEndsAt) {
+      this.publish({ ...this.view, cue: null })
+    }
+    this.schedule(round, this.view.cue === null ? boundary : cueEndsAt)
   }
 
   private showTrial(round: Round, index: number, now: number): void {
     const trial = this.trials[index]
-    round.shownAt = now
+    const { trialMs } = this.config
+    // The last trial has no following stimulus, so its full interval starts at the actual onset.
+    const deadline = index === this.trials.length - 1
+      ? now + trialMs
+      : round.firstTrialAt + (index + 1) * trialMs
+    round.windows.push({ shownAt: now, deadline })
     this.publish({
       phase: index < this.config.n ? 'warmup' : 'running',
       countdown: 0,

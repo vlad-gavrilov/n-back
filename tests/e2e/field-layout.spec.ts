@@ -48,6 +48,31 @@ for (const width of [430, 1440]) for (const theme of ['light', 'dark']) test(`st
   }
 })
 
+for (const [width, height] of [[667, 280], [568, 260], [320, 256]]) test(`a 6×6 cue and both responses remain usable at ${width}×${height}`, async ({ page }) => {
+  await page.setViewportSize({ width, height })
+  const time = new Date('2026-11-04T12:00:00Z')
+  await page.clock.install({ time })
+  await page.clock.pauseAt(time)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Session settings' }).click()
+  const settings = page.getByRole('dialog')
+  await settings.getByRole('button', { name: 'Dual', exact: true }).click()
+  await settings.getByRole('combobox', { name: 'Field size' }).selectOption('6')
+  await settings.getByRole('button', { name: 'Close dialog' }).click()
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  await page.clock.runFor(9000)
+  await expect(page.locator('.field-cell.lit span')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+  for (const label of ['Position', 'Audio']) {
+    const response = page.getByRole('button', { name: new RegExp(`^${label}`) })
+    await response.scrollIntoViewIfNeeded()
+    await expect(response).toBeInViewport({ ratio: 1 })
+    await response.click()
+    await expect(response.locator('small')).toHaveText(/Correct|False alarm/)
+  }
+})
+
 for (const width of [430, 1440]) test(`theme control and its artwork are centered in both themes (${width}px)`, async ({ page }) => {
   await page.setViewportSize({ width, height: width === 430 ? 932 : 900 })
   await page.goto('/')

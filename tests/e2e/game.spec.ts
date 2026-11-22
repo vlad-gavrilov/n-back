@@ -121,6 +121,10 @@ test('dual mode accepts both touch channels and ends cleanly on audio interrupti
 for (const reason of ['visibility', 'orientation']) test(`${reason} interrupts without a score`, async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Begin session' }).click()
+  if (reason === 'orientation') {
+    await page.evaluate(() => window.dispatchEvent(new Event('orientationchange')))
+    await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  }
   await page.evaluate(reason => {
     if (reason === 'visibility') { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')) }
     else screen.orientation.dispatchEvent(new Event('change'))
@@ -128,6 +132,17 @@ for (const reason of ['visibility', 'orientation']) test(`${reason} interrupts w
   await expect(page.getByText('This round was not scored.')).toBeVisible()
   await expect(page.getByText('Session score', { exact: true })).toHaveCount(0)
 })
+test('legacy mobile rotation interrupts the round when screen.orientation is unavailable', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(screen, 'orientation', { value: undefined, configurable: true }))
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  await page.evaluate(() => window.dispatchEvent(new Event('orientationchange')))
+  await expect(page.getByText('The screen orientation changed. Start a fresh round in this layout.')).toBeVisible()
+  await expect(page.getByText('This round was not scored.')).toBeVisible()
+})
+
 for (const locale of locales) for (const [width, height] of [[1200, 683], [932, 430], [1133, 744]]) test(`short and landscape layout ${width}×${height} (${locale})`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await page.goto('/')
   if (locale !== 'en') await selectLocale(page, locale)

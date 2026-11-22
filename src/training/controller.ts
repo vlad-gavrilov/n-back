@@ -88,6 +88,7 @@ export class TrainingController {
       if (request.purpose === 'session') {
         this.beginSession({ ...this.state.config, n: request.n })
       } else {
+        this.player.stop()
         this.player.play('B')
         // Starting a sample can synchronously report an interruption.
         if (!pending.signal.aborted) this.update({ audio: { purpose: 'test', phase: 'success' } })
@@ -117,7 +118,7 @@ export class TrainingController {
     session.start()
   }
 
-  respond = (channel: Channel): void => { this.session?.respond(channel) }
+  respond = (channel: Channel, occurredAt?: number): void => { this.session?.respond(channel, occurredAt) }
 
   interrupt(reason: InterruptionReason): void {
     const { config, audio } = this.state

@@ -1,5 +1,27 @@
 import { expect, test } from './fixtures'
 
+test.describe('touch backdrop', () => {
+  test.use({ hasTouch: true, viewport: { width: 1024, height: 900 } })
+
+  test('dismissing the dialog leaves the controls behind the backdrop untouched', async ({ page }) => {
+    await page.goto('/')
+    const opener = page.getByRole('button', { name: 'How to play' })
+    const dialog = page.getByRole('dialog')
+    const initialTheme = await page.locator('html').getAttribute('data-theme')
+    for (const target of [page.locator('.theme-toggle'), opener]) {
+      await opener.tap()
+      await expect(dialog).toBeVisible()
+      const box = (await target.boundingBox())!
+      const y = box.y + box.height / 2
+      expect(y).toBeLessThan((await dialog.boundingBox())!.y)
+      await page.touchscreen.tap(box.x + box.width / 2, y)
+      await expect(dialog).toHaveCount(0)
+      await expect(page.locator('html')).toHaveAttribute('data-theme', initialTheme!)
+      await expect(opener).toBeFocused()
+    }
+  })
+})
+
 test('dialog padding and dragging out keep it open; backdrop and Escape restore focus', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 700 })
   await page.goto('/')

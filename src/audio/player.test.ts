@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { LETTERS } from '../game/config'
+import { DEFAULT_CONFIG, LETTERS } from '../game/config'
+import { TrainingController } from '../training/controller'
 import { AudioPlayer } from './player'
 
 function deferred<T>() {
@@ -77,6 +78,23 @@ it('resumes immediately, loads the versioned letter set once and plays a cached 
   expect(decode).toHaveBeenCalledTimes(LETTERS.length)
   player.play('B')
   expect(createSource.mock.results[0].value.start).toHaveBeenCalledOnce()
+})
+
+it('stops the previous sound test source before starting the replay', async () => {
+  const { createSource } = stubAudio()
+  const trainer = new TrainingController()
+  trainer.configure({ ...DEFAULT_CONFIG, mode: 'dual' })
+  await trainer.testSound()
+  await trainer.testSound()
+
+  const [previous, replay] = createSource.mock.results.map(result => result.value)
+  expect(previous.start).toHaveBeenCalledOnce()
+  expect(previous.stop).toHaveBeenCalledOnce()
+  expect(previous.disconnect).toHaveBeenCalledOnce()
+  expect(previous.stop.mock.invocationCallOrder[0]).toBeLessThan(replay.start.mock.invocationCallOrder[0])
+  expect(replay.stop).not.toHaveBeenCalled()
+  expect(trainer.getSnapshot().audio).toEqual({ phase: 'success', purpose: 'test' })
+  trainer.dispose()
 })
 
 it('skips context creation when preparation is already cancelled', async () => {

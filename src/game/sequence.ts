@@ -77,5 +77,5 @@ export function isTarget(trials: readonly Trial[], index: number, n: number, cha
   const previous = trials[index - n]
   return channel === 'visual'
     ? current.position === previous.position
-    : current.letter === previous.letter
+    : current.letter !== undefined && current.letter === previous.letter
 }

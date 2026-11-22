@@ -161,6 +161,97 @@ describe('session timing', () => {
     setNow(9000); s.respond('audio'); expect(s.view.answered.audio).toBeUndefined()
   })
 
+  it.each(['input first', 'timer first', 'next press first'])('credits a press just before a boundary when its delivery is delayed (%s)', order => {
+    const { session, advance, setNow, changed } = setup({ n: 1, trialMs: 1000 })
+    session.start()
+    const target = session.trials.findIndex((trial, i, trials) =>
+      i > 0 && i + 1 < trials.length && trial.position === trials[i - 1].position && trial.position !== trials[i + 1].position)
+    expect(target).toBeGreaterThan(0)
+    const boundary = 3000 + (target + 1) * 1000
+    advance(boundary - 1)
+    setNow(boundary + 23)
+    if (order !== 'input first') vi.advanceTimersByTime(1)
+    if (order === 'next press first') session.respond('visual')
+
+    changed.mockClear()
+    session.respond('visual', boundary - 7.25)
+    expect(changed).not.toHaveBeenCalled()
+    if (order === 'input first') vi.advanceTimersByTime(1)
+    expect(session.view.index).toBe(target + 1)
+    expect(session.view.answered).toEqual(order === 'next press first' ? { visual: false } : {})
+
+    session.respond('visual')
+    expect(session.view.answered).toEqual({ visual: false })
+    advance(session.trials.length * 1000)
+    expect(session.view.result?.visual).toMatchObject({ hits: 1, falseAlarms: 1, meanHitReactionMs: 992.75 })
+  })
+
+  it('measures a delayed press from the actual onset and keeps the earliest press per channel', () => {
+    const { session, advance, setNow, changed } = setup({ n: 1, trialMs: 1000 })
+    session.start()
+    const target = session.trials.findIndex((trial, i, trials) => i > 0 && trial.position === trials[i - 1].position)
+    const nominal = 3000 + target * 1000
+    const shownAt = nominal + 100.25
+    advance(nominal - 1)
+    setNow(shownAt)
+    vi.advanceTimersByTime(1)
+    setNow(shownAt + 180)
+    session.respond('visual', shownAt + 84.5)
+    expect(session.view.answered).toEqual({ visual: true })
+
+    changed.mockClear()
+    session.respond('visual', shownAt + 43.125)
+    session.respond('visual', shownAt + 95)
+    expect(changed).not.toHaveBeenCalled()
+    advance(session.trials.length * 1000)
+    expect(session.view.result?.visual).toMatchObject({ hits: 1, falseAlarms: 0, meanHitReactionMs: 43.125 })
+  })
+
+  it('rejects warm-up, future, nonfinite and pre-onset timestamps when a scored trial opens late', () => {
+    const { session, advance, setNow } = setup({ n: 1, trialMs: 1000 })
+    session.start()
+    advance(4999)
+    setNow(5125)
+    vi.advanceTimersByTime(1)
+    for (const time of [-1, 3500, 5000, 5124.875, 5125.125, NaN, Infinity, -Infinity]) {
+      session.respond('visual', time)
+    }
+    expect(session.view.answered).toEqual({})
+    session.respond('audio', 5125)
+    expect(session.view.answered.audio).toBeDefined()
+    advance(session.trials.length * 1000)
+    expect(session.view.result?.visual).toMatchObject({ hits: 0, falseAlarms: 0 })
+  })
+
+  it('discards queued input from a previous round after a restart', () => {
+    const { session, advance, clock } = setup({ n: 1, trialMs: 1000 })
+    session.start()
+    advance(4100)
+    const earlierRound = clock.now()
+    session.start()
+    advance(4100)
+    session.respond('visual', earlierRound)
+    expect(session.view.answered).toEqual({})
+    advance(session.trials.length * 1000)
+    expect(session.view.result?.visual).toMatchObject({ hits: 0, falseAlarms: 0 })
+  })
+
+  it('credits a queued final press made before its actual deadline and freezes the result on completion', () => {
+    const { session, advance, setNow, shownAt } = showLateTrial('last')
+    advance(500)
+    setNow(shownAt + 1030)
+    session.respond('visual', shownAt + 999.875)
+    session.respond('audio', shownAt + 1000)
+    vi.advanceTimersToNextTimer()
+    expect(session.view.phase).toBe('complete')
+    const result = session.view.result!
+    expect(result.visual.hits + result.visual.falseAlarms).toBe(1)
+    expect(result.audio!.hits + result.audio!.falseAlarms).toBe(0)
+    session.respond('audio', shownAt + 950)
+    expect(session.view.result).toBe(result)
+    expect(result.audio!.hits + result.audio!.falseAlarms).toBe(0)
+  })
+
   it('keeps a late last trial open through its final millisecond', () => {
     const { session, advance } = showLateTrial('last')
     advance(999)

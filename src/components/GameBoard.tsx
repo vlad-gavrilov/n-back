@@ -2,12 +2,13 @@ import type { CSSProperties, RefObject } from 'react'
 import { isFixationCell, type Channel, type SessionConfig } from '../game/config'
 import { isSessionActive, type SessionView } from '../game/session'
 import type { Messages } from '../i18n'
+import { inputTime } from '../input/time'
 
 interface GameBoardProps {
   config: SessionConfig
   view: SessionView
   boardRef: RefObject<HTMLDivElement | null>
-  onAnswer: (channel: Channel) => void
+  onAnswer: (channel: Channel, occurredAt: number) => void
   t: Messages
 }
 
@@ -67,11 +68,11 @@ export function GameBoard({ config, view, boardRef, onAnswer, t }: GameBoardProp
               onPointerDown={event => {
                 if (event.button !== 0) return
                 event.preventDefault()
-                onAnswer(channel)
+                onAnswer(channel, inputTime(event.nativeEvent))
               }}
               onClick={event => {
                 // Pointer responses are timed on press. Keyboard and assistive clicks have detail zero.
-                if (event.detail === 0) onAnswer(channel)
+                if (event.detail === 0) onAnswer(channel, inputTime(event.nativeEvent))
               }}
             >
               <span>{channel === 'visual' ? t.position : t.audio}</span>

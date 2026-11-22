@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generateTrials, scoreRound, recommendLevel, seededRandom, type ChannelResponse, type SessionConfig } from './engine'
+import { generateTrials, isTarget, scoreRound, recommendLevel, seededRandom, type ChannelResponse, type SessionConfig } from './engine'
 
 const config: SessionConfig = { mode: 'dual', n: 2, gridSize: 3, liveFeedback: true, trialMs: 3000 }
 describe('sequence contract', () => {
@@ -28,6 +28,10 @@ describe('sequence contract', () => {
     expect(trials.map(trial => `${trial.position}${trial.letter}`).join(' ')).toBe(
       '3R 0M 0F 0M 1H 0R 5H 0R 0H 2Q 5R 3J 5B 0M 6H 0Q 1H 0H 7W 5F 1W 2B',
     )
+  })
+  it('finds no audio targets in a visual-only round', () => {
+    const trials = generateTrials({ ...config, mode: 'visual' }, seededRandom(127))
+    expect(trials.some((_, index) => isTarget(trials, index, config.n, 'audio'))).toBe(false)
   })
   it('rejects unsupported configuration', () => { expect(() => generateTrials({ ...config, n: 0 })).toThrow(); expect(() => generateTrials({ ...config, trialMs: 1234 })).toThrow(); expect(() => generateTrials({ ...config, trialMs: 1000 })).not.toThrow() })
 })

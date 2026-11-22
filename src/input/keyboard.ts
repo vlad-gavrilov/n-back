@@ -1,4 +1,5 @@
 import type { Channel, SessionConfig } from '../game/config'
+import { inputTime } from './time'
 
 const fallbackCodes: Record<string, string> = { a: 'KeyA', 'ф': 'KeyA', v: 'KeyV', 'м': 'KeyV', ' ': 'Space', spacebar: 'Space' }
 const editable = 'input,select,textarea,[contenteditable]:not([contenteditable="false"]),[role="textbox"]'
@@ -21,7 +22,7 @@ function isActivationKey(event: Key): boolean {
     : [' ', 'Spacebar', 'Enter'].includes(event.key)
 }
 
-export function listenForResponseKeys(mode: SessionConfig['mode'], respond: (channel: Channel) => void) {
+export function listenForResponseKeys(mode: SessionConfig['mode'], respond: (channel: Channel, occurredAt: number) => void) {
   function handleKeyDown(event: KeyboardEvent) {
     if (event.defaultPrevented || event.isComposing) return
     const target = event.target instanceof Element ? event.target : null
@@ -44,13 +45,13 @@ export function listenForResponseKeys(mode: SessionConfig['mode'], respond: (cha
       // Answer on keydown and suppress the native click on release, possibly in the next trial.
       event.preventDefault()
       const focusedChannel = responseButton.dataset.channel
-      if (focusedChannel === 'visual' || focusedChannel === 'audio') respond(focusedChannel)
+      if (focusedChannel === 'visual' || focusedChannel === 'audio') respond(focusedChannel, inputTime(event))
       return
     }
     if (activation && target?.closest(interactive)) return
     if (channel) {
       event.preventDefault()
-      respond(channel)
+      respond(channel, inputTime(event))
     }
   }
 

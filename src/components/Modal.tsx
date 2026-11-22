@@ -1,4 +1,4 @@
-import { useEffect, useRef, type PointerEvent, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, type MouseEvent, type ReactNode, type RefObject } from 'react'
 import { type Messages } from '../i18n'
 
 const lockedProperties = ['position', 'top', 'left', 'width', 'overflow', 'padding-right'] as const
@@ -45,7 +45,7 @@ export function Modal({ title, children, close, t, languageControl, fallbackFocu
     }
   }, [fallbackFocusRef])
 
-  function outside(event: PointerEvent<HTMLDialogElement>) {
+  function outside(event: MouseEvent<HTMLDialogElement>) {
     const box = event.currentTarget.getBoundingClientRect()
     return event.target === event.currentTarget && (event.clientX < box.left || event.clientX >= box.right || event.clientY < box.top || event.clientY >= box.bottom)
   }
@@ -54,11 +54,18 @@ export function Modal({ title, children, close, t, languageControl, fallbackFocu
     onCancel={event => { event.preventDefault(); close() }}
     onPointerDown={event => { outsidePointer.current = event.isPrimary && event.button === 0 && outside(event) ? event.pointerId : null }}
     onPointerUp={event => {
-      const startedOutside = outsidePointer.current === event.pointerId
-      outsidePointer.current = null
-      if (startedOutside && outside(event)) close()
+      if (outsidePointer.current !== event.pointerId || !outside(event)) outsidePointer.current = null
     }}
-    onPointerCancel={() => { outsidePointer.current = null }}>
+    onPointerCancel={() => { outsidePointer.current = null }}
+    onClick={event => {
+      // Keep the dialog over the page until the browser delivers the click after a tap.
+      const startedOutside = outsidePointer.current !== null
+      outsidePointer.current = null
+      if (startedOutside && outside(event)) {
+        event.stopPropagation()
+        close()
+      }
+    }}>
     <div className="dialog-header"><h2 id="dialog-title" ref={titleRef} tabIndex={-1}>{title}</h2>{languageControl}<button onClick={close} aria-label={t.close} className="icon-button">×</button></div>
     {children}
   </dialog>

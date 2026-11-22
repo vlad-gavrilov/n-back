@@ -227,7 +227,7 @@
 
   .game-region {
     display: grid;
-    grid-template-columns: minmax(180px,280px) minmax(150px,1fr);
+    grid-template-columns: minmax(0,280px) minmax(150px,1fr);
     gap: 10px 30px;
     align-items: center;
   }
@@ -420,7 +420,9 @@ button:not(:disabled):active {
   }
 
   .field {
-    max-width: min(180px,calc(100svh - 190px));
+    max-width: clamp(128px,calc(100svh - 190px),180px);
+    padding: 12px;
+    gap: 6px;
   }
 
   .game-region {

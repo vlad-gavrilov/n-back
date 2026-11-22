@@ -17,3 +17,5 @@ The next-level recommendation is +1 when errors (misses + false alarms) are at m
 Input and stimulus times are measured with a monotonic browser clock. Scheduled boundaries avoid cumulative interval drift. If a stimulus onset arrives more than 250 ms late, an entire stimulus was skipped, or the previous cue is still visible at the next trial boundary, the round is interrupted rather than replayed at accelerated speed.
 
 The final response window ends one configured interval after the last stimulus actually appears, including when its onset was slightly delayed. Earlier response windows end at the next scheduled stimulus.
+
+During an active round, keyboard and pointer responses use the input event's timestamp. If the browser delivers an event after the next trial has started, the original trial receives the response and reaction time. Feedback for the new trial stays available for its own responses. Scoring closes when the round ends.

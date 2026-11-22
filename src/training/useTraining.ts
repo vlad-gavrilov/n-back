@@ -8,13 +8,15 @@ export function useTraining(dialogOpen: boolean) {
 
   useEffect(() => {
     const orientation = screen.orientation
+    const orientationTarget = orientation ?? window
+    const orientationEvent = orientation ? 'change' : 'orientationchange'
     const onOrientation = () => controller.interrupt('orientation')
     const onVisibility = () => { if (document.hidden) controller.interrupt('hidden') }
     document.addEventListener('visibilitychange', onVisibility)
-    orientation?.addEventListener('change', onOrientation)
+    orientationTarget.addEventListener(orientationEvent, onOrientation)
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
-      orientation?.removeEventListener('change', onOrientation)
+      orientationTarget.removeEventListener(orientationEvent, onOrientation)
       controller.dispose()
     }
   }, [controller])

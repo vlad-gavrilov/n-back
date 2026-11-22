@@ -130,6 +130,35 @@ test('retry starts the recommended level selected on the results screen', async 
   await expect(page.getByText('Trial 1 of 20', { exact: true })).toBeVisible()
 })
 
+test('queued key and touch answers count for the trial during which they were pressed', async ({ page }) => {
+  await startRound(page, 'dual')
+  await page.clock.runFor(2990)
+  const pressedAt = await page.evaluate(() => performance.now())
+  await page.clock.runFor(20)
+  await expect(page.getByText('Trial 2 of 20', { exact: true })).toBeVisible()
+
+  await page.evaluate(at => {
+    // Deliver retained input events after the boundary, with their original press times.
+    const key = new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', bubbles: true, cancelable: true })
+    Object.defineProperty(key, 'timeStamp', { value: at })
+    document.dispatchEvent(key)
+    const touch = new PointerEvent('pointerdown', { pointerType: 'touch', button: 0, bubbles: true, cancelable: true })
+    Object.defineProperty(touch, 'timeStamp', { value: performance.timeOrigin + at })
+    document.querySelector('button[data-channel="visual"]')!.dispatchEvent(touch)
+  }, pressedAt)
+
+  for (const answer of await page.locator('.answer-button small').all()) await expect(answer).toHaveText('Match')
+  await page.clock.runFor(57000)
+  await expect(page.getByRole('heading', { name: 'Round complete' })).toBeVisible()
+  const channels = page.locator('.channel-stats')
+  await expect(channels).toHaveCount(2)
+  for (const channel of await channels.all()) {
+    const hits = await channel.getByText('Hits', { exact: true }).locator('..').locator('dd').innerText()
+    const falseAlarms = await channel.getByText('False alarms', { exact: true }).locator('..').locator('dd').innerText()
+    expect(Number(hits) + Number(falseAlarms)).toBe(1)
+  }
+})
+
 for (const phase of ['countdown', 'running']) test(`suspending a prepared Dual context does not interrupt a Visual ${phase}`, async ({ page }) => {
   await freezeClock(page)
   await page.goto('/')
