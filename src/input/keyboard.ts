@@ -1,7 +1,11 @@
 import type { Channel, SessionConfig } from '../game/config'
 import { inputTime } from './time'
 
-const fallbackCodes: Record<string, string> = { a: 'KeyA', 'ф': 'KeyA', v: 'KeyV', 'м': 'KeyV', ' ': 'Space', spacebar: 'Space' }
+const fallbackCodes: Record<string, string> = {
+  f: 'KeyF', 'а': 'KeyF',
+  j: 'KeyJ', 'о': 'KeyJ',
+  ' ': 'Space', spacebar: 'Space',
+}
 const editable = 'input,select,textarea,[contenteditable]:not([contenteditable="false"]),[role="textbox"]'
 const interactive = 'button,a[href],summary,[role="button"],[role="link"]'
 type Key = Pick<KeyboardEvent, 'code' | 'key'>
@@ -13,7 +17,7 @@ function hasPhysicalCode(event: Key): boolean {
 export function getResponseChannel(event: Key, mode: SessionConfig['mode']): Channel | null {
   const code = hasPhysicalCode(event) ? event.code : fallbackCodes[event.key.toLowerCase()]
   if (mode === 'visual') return code === 'Space' ? 'visual' : null
-  return code === 'KeyA' ? 'audio' : code === 'KeyV' ? 'visual' : null
+  return code === 'KeyF' ? 'visual' : code === 'KeyJ' ? 'audio' : null
 }
 
 function isActivationKey(event: Key): boolean {

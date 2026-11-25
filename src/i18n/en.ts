@@ -65,7 +65,7 @@ export const en = {
   continueAt: (n: number) => `Continue at ${n}-back`,
   repeat: (n: number) => `Repeat ${n}-back`,
   adjust: 'Adjust session',
-  gameControls: 'Game controls. Space for position in visual mode. V for position and A for audio in dual mode. These physical keys work anywhere on the active page, in any keyboard layout.',
+  gameControls: 'Game controls. Space for position in visual mode. F for position and J for audio in dual mode. These physical keys work anywhere on the active page, in any keyboard layout.',
   field: (n: number) => `${n} by ${n} stimulus field`,
   startFresh: 'Start fresh',
 
@@ -101,7 +101,7 @@ export const en = {
   lessonTitle1: 'Two streams. Two decisions.',
   lessonTitle2: 'Let non-matches pass.',
   lessonText0: 'In 2-back, compare the current position with the position two steps earlier. The item just before it is not the one you are looking for.',
-  lessonText1: 'In Dual mode, listen to the letters as well. Position and audio can match separately, together, or neither. Use both answer buttons if both match. V answers for position and A for audio. These physical keys work anywhere on the active page, even when the keyboard layout changes.',
+  lessonText1: 'In Dual mode, listen to the letters as well. Position and audio can match separately, together, or neither. Use both answer buttons if both match. F answers for position and J for audio. These physical keys work anywhere on the active page, even when the keyboard layout changes.',
   lessonText2: (ms: number) => `Press only when there is a match. The first N items are a warm-up: just watch and listen. Then you have ${SCORED_TRIALS} trials, with ${format.seconds(ms)} for each answer.`,
   example: 'Example: top left, bottom right, top left. The third position matches the first.',
   exampleStep: (i: number) => `Step ${i}`,

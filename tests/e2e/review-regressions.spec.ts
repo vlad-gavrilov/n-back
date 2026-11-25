@@ -129,8 +129,8 @@ test('retrying a failed mobile Dual session closes settings before preparation a
     await expect(page.getByRole('heading', { name: 'Get ready', exact: true })).toBeVisible()
     await expect(page.locator('.game-region')).toBeFocused()
     await page.clock.runFor(9000)
-    await page.keyboard.press('v')
-    await page.keyboard.press('a')
+    await page.keyboard.press('f')
+    await page.keyboard.press('j')
     for (const channel of ['Position', 'Audio']) await expect(page.getByRole('button', { name: new RegExp(`^${channel}`) }).locator('small')).toHaveText(/Correct|False alarm/)
   } finally { release() }
 })
@@ -198,7 +198,7 @@ test('queued key and touch answers count for the trial during which they were pr
 
   await page.evaluate(at => {
     // Deliver retained input events after the boundary, with their original press times.
-    const key = new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', bubbles: true, cancelable: true })
+    const key = new KeyboardEvent('keydown', { key: 'j', code: 'KeyJ', bubbles: true, cancelable: true })
     Object.defineProperty(key, 'timeStamp', { value: at })
     document.dispatchEvent(key)
     const touch = new PointerEvent('pointerdown', { pointerType: 'touch', button: 0, bubbles: true, cancelable: true })

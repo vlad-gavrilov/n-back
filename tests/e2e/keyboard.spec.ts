@@ -17,27 +17,35 @@ async function dispatchKeys(page: Page, keys: Array<{ key: string; code: string;
   return page.evaluate(keys => keys.map(key => document.dispatchEvent(new KeyboardEvent('keydown', { ...key, bubbles: true, cancelable: true }))), keys)
 }
 
-test('A/V work on the page background, theme button and heading', async ({ page }) => {
+test('F/J work on the page background, theme button and heading', async ({ page }) => {
   await startDual(page)
+  await expect(page.getByRole('button', { name: /^Position/ }).locator('kbd')).toHaveText('F')
+  await expect(page.getByRole('button', { name: /^Audio/ }).locator('kbd')).toHaveText('J')
   for (const target of ['body', '.theme-toggle', '.training-heading h1']) {
     if (target === 'body') await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur() })
     else await page.locator(target).focus()
-    await page.keyboard.press('a'); await page.keyboard.press('v')
+    await page.keyboard.down('f')
+    await page.keyboard.press('j')
+    await page.keyboard.up('f')
     await expectBothAnswers(page)
     await page.clock.runFor(3000)
   }
 })
 
-test('Russian characters use physical A/V and incomplete codes have a fallback', async ({ page }) => {
+test('Russian characters use physical F/J and incomplete codes have a fallback', async ({ page }) => {
   await startDual(page)
   await page.locator('.theme-toggle').focus()
   for (const code of ['physical', '', 'Unidentified']) {
-    const prevented = await dispatchKeys(page, [{ key: 'ф', code: code === 'physical' ? 'KeyA' : code }, { key: 'м', code: code === 'physical' ? 'KeyV' : code }])
-    expect(prevented).toEqual([false, false])
+    const dispatched = await dispatchKeys(page, [
+      { key: 'а', code: code === 'physical' ? 'KeyF' : code },
+      { key: 'о', code: code === 'physical' ? 'KeyJ' : code },
+    ])
+    expect(dispatched).toEqual([false, false])
     await expectBothAnswers(page)
     await page.clock.runFor(3000)
   }
-  await dispatchKeys(page, [{ key: 'а', code: 'KeyF' }])
+  await page.keyboard.press('v')
+  await page.keyboard.press('a')
   for (const button of await page.locator('.answer-button small').all()) await expect(button).toHaveText('Match')
 })
 
@@ -46,16 +54,16 @@ test('global responses ignore editing, composition, modifiers, repeats and consu
   await page.evaluate(() => {
     const input = document.createElement('input'); input.setAttribute('aria-label', 'Keyboard test input'); document.querySelector('main')!.append(input); input.focus()
   })
-  await page.keyboard.press('a'); await page.keyboard.press('v')
+  await page.keyboard.press('f'); await page.keyboard.press('j')
   await page.evaluate(() => {
     const editor = document.createElement('div'); editor.contentEditable = 'true'; editor.setAttribute('role', 'textbox'); document.querySelector('main')!.append(editor); editor.focus()
   })
-  await page.keyboard.press('a'); await page.keyboard.press('v')
+  await page.keyboard.press('f'); await page.keyboard.press('j')
   await page.locator('.theme-toggle').focus()
-  await dispatchKeys(page, [{ key: 'ф', code: 'KeyA', isComposing: true }, { key: 'м', code: 'KeyV', ctrlKey: true }, { key: 'a', code: 'KeyA', repeat: true }])
-  await page.evaluate(() => { const event = new KeyboardEvent('keydown', { key: 'v', code: 'KeyV', bubbles: true, cancelable: true }); event.preventDefault(); document.dispatchEvent(event) })
+  await dispatchKeys(page, [{ key: 'а', code: 'KeyF', isComposing: true }, { key: 'о', code: 'KeyJ', ctrlKey: true }, { key: 'f', code: 'KeyF', repeat: true }])
+  await page.evaluate(() => { const event = new KeyboardEvent('keydown', { key: 'j', code: 'KeyJ', bubbles: true, cancelable: true }); event.preventDefault(); document.dispatchEvent(event) })
   for (const button of await page.locator('.answer-button small').all()) await expect(button).toHaveText('Match')
-  await page.keyboard.press('a'); await page.keyboard.press('v')
+  await page.keyboard.press('f'); await page.keyboard.press('j')
   await expectBothAnswers(page)
 })
 
@@ -78,7 +86,7 @@ test('global Space answers on background but retains button actions', async ({ p
 
 test('subscriptions follow the active phase and mode across a restart', async ({ page }) => {
   await page.clock.install(); await page.goto('/')
-  const audioKey = [{ key: 'ф', code: 'KeyA' }]
+  const audioKey = [{ key: 'о', code: 'KeyJ' }]
   expect(await dispatchKeys(page, audioKey)).toEqual([true])
   await page.getByRole('button', { name: 'How to play' }).click()
   expect(await dispatchKeys(page, audioKey)).toEqual([true])

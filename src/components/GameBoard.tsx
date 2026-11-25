@@ -33,7 +33,7 @@ export function GameBoard({ config, view, boardRef, onAnswer, t }: GameBoardProp
   const { gridSize, mode } = config
   const active = isSessionActive(view.phase)
   const channels: Channel[] = mode === 'dual' ? ['visual', 'audio'] : ['visual']
-  const visualShortcut = mode === 'dual' ? 'V' : t.space
+  const visualShortcut = mode === 'dual' ? 'F' : t.space
 
   return (
     <div className="game-region" ref={boardRef} tabIndex={-1} aria-label={t.gameControls}>
@@ -76,7 +76,7 @@ export function GameBoard({ config, view, boardRef, onAnswer, t }: GameBoardProp
               }}
             >
               <span>{channel === 'visual' ? t.position : t.audio}</span>
-              <kbd>{channel === 'visual' ? visualShortcut : 'A'}</kbd>
+              <kbd>{channel === 'visual' ? visualShortcut : 'J'}</kbd>
               <small>{feedback.label}</small>
             </button>
           )
