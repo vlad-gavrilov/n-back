@@ -78,7 +78,6 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
-.game-region:focus-visible,
 .training-heading h1:focus-visible,
 .interruption-card h2:focus-visible {
   outline: 3px solid var(--accent);

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from './fixtures'
+import { tabToNextControl } from './keyboard-navigation'
 
 type TestAudioWindow = {
   __testAudioContext: AudioContext
@@ -20,6 +21,23 @@ async function startRound(page: Page, mode: 'visual' | 'dual') {
   await page.clock.runFor(9000)
   await expect(page.getByText('Trial 1 of 20', { exact: true })).toBeVisible()
 }
+
+test('Space answers without outlining the board and Tab highlights the response button', async ({ page, browserName }) => {
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await startRound(page, 'visual')
+  const board = page.locator('.game-region')
+  const answer = page.getByRole('button', { name: /^Position/ })
+  await expect(board).toBeFocused()
+
+  await page.keyboard.press('Space')
+  await expect(answer.locator('small')).toHaveText(/Correct|False alarm/)
+  await expect(board).toBeFocused()
+  await expect(board).toHaveCSS('outline-style', 'none')
+
+  await tabToNextControl(page, browserName)
+  await expect(answer).toBeFocused()
+  await expect(answer).toHaveCSS('outline-style', 'solid')
+})
 
 test('repeated positions have blank frames between them after two delayed timers', async ({ page }) => {
   await freezeClock(page)

@@ -115,7 +115,8 @@
   outline-offset: 5px;
 }
 
-:root[data-input-modality=pointer] :is(button,a,input,select,.game-region,.training-heading h1,.interruption-card h2,.dialog-header h2):focus {
+.game-region:focus,
+:root[data-input-modality=pointer] :is(button,a,input,select,.training-heading h1,.interruption-card h2,.dialog-header h2):focus {
   outline: none;
 }
 
