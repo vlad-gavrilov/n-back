@@ -45,6 +45,8 @@ Choose Visual or Dual, N from 1 to 9, and a field size from 2 to 6. Press only w
 
 Dual mode needs sound. Use Test sound before starting; its loading, success and error messages appear beside that control in settings. Closing mobile settings during preparation lets the test continue and moves its feedback to the main screen, without starting a round. Errors offer retry and Visual mode. Retrying a session from settings closes the dialog before preparing the round. Backgrounding, rotation or a timing interruption ends the current round without a score; an audio interruption also ends a Dual round. Events from a previously prepared audio context do not interrupt Visual rounds. A separate card explains interruptions and offers a fresh round.
 
+Before a round, open Session settings if the window is at most 864 px wide or if a landscape window is at most 560 px tall (for example, 1200 × 500). At other sizes, settings sit to the left of the field. During play, progress and Stop appear above the field. The response buttons become available after warm-up, below the field in portrait and on either side when a short landscape window has enough room.
+
 Adjust session opens the settings dialog on every screen. Result actions are disabled while preparing the next round. Results remain available until a game parameter actually changes. Dialogs keep the background still and restore scroll position and focus when closed; clicking inside the panel, including its padding, keeps it open.
 
 See [exercise parameters and sources](docs/research.md).

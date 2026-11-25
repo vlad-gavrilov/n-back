@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures'
+import { expect, freezeClock, test, type Page } from './fixtures'
 
 async function fieldGeometry(page: Page) {
   return page.locator('.field').evaluate(field => {
@@ -50,9 +50,7 @@ for (const width of [430, 1440]) for (const theme of ['light', 'dark']) test(`st
 
 for (const [width, height] of [[667, 280], [568, 260], [320, 256]]) test(`a 6×6 cue and both responses remain usable at ${width}×${height}`, async ({ page }) => {
   await page.setViewportSize({ width, height })
-  const time = new Date('2026-11-04T12:00:00Z')
-  await page.clock.install({ time })
-  await page.clock.pauseAt(time)
+  await freezeClock(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'Session settings' }).click()
   const settings = page.getByRole('dialog')
@@ -66,10 +64,133 @@ for (const [width, height] of [[667, 280], [568, 260], [320, 256]]) test(`a 6×6
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
   for (const label of ['Position', 'Audio']) {
     const response = page.getByRole('button', { name: new RegExp(`^${label}`) })
-    await response.scrollIntoViewIfNeeded()
     await expect(response).toBeInViewport({ ratio: 1 })
     await response.click()
     await expect(response.locator('small')).toHaveText(/Correct|False alarm/)
+  }
+})
+
+for (const layout of [
+  { width: 1366, height: 768, compact: false, minFrameSide: 500, flank: false },
+  { width: 768, height: 1024, compact: true, minFrameSide: 550, flank: false },
+  { width: 375, height: 667, compact: true, minFrameSide: 330, flank: false },
+  { width: 844, height: 390, compact: true, minFrameSide: 300, flank: true },
+  { width: 480, height: 190, compact: true, minFrameSide: 110, flank: true },
+]) test(`round controls and field fit without scrolling at ${layout.width}×${layout.height}`, async ({ page }) => {
+  const { width, height, compact, minFrameSide, flank } = layout
+  await page.setViewportSize({ width, height })
+  await freezeClock(page)
+  await page.goto('/')
+  const settings = page.getByRole('button', { name: 'Session settings' })
+  if (compact) await settings.click()
+  await page.getByRole('button', { name: 'Dual', exact: true }).click()
+  if (compact) await page.getByRole('button', { name: 'Close dialog' }).click()
+  await page.evaluate(() => document.fonts.ready)
+  const position = page.getByRole('button', { name: /^Position/ })
+  const audio = page.getByRole('button', { name: /^Audio/ })
+  const field = page.locator('.field')
+  await expect(position).toBeHidden()
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  const stop = page.getByRole('button', { name: 'Stop round' })
+  await expect(stop).toBeVisible()
+  const frame = (await page.locator('.field-frame').boundingBox())!
+  const initial = (await field.boundingBox())!
+  expect(frame.width).toBeGreaterThanOrEqual(minFrameSide)
+  expect(frame.height).toBeCloseTo(frame.width, 1)
+  const inset = frame.width * (compact ? .03 : .04)
+  for (const gap of [
+    initial.x - frame.x, frame.x + frame.width - initial.x - initial.width,
+    initial.y - frame.y, frame.y + frame.height - initial.y - initial.height,
+  ]) expect(gap).toBeCloseTo(inset, 1)
+  expect((await stop.boundingBox())!.y).toBeLessThan(initial.y)
+  await page.clock.runFor(3000)
+  await expect(page.getByText(/Warm-up 1/)).toBeVisible()
+  await expect(position).toBeHidden()
+  expect(await field.boundingBox()).toEqual(initial)
+  await page.clock.runFor(6000)
+  for (const target of [field, stop, position, audio]) await expect(target).toBeInViewport({ ratio: 1 })
+  expect(await field.boundingBox()).toEqual(initial)
+  expect(await page.evaluate(() => scrollY)).toBe(0)
+  const first = (await position.boundingBox())!, second = (await audio.boundingBox())!
+  if (flank) {
+    expect(first.x + first.width).toBeLessThan(initial.x)
+    expect(second.x).toBeGreaterThan(initial.x + initial.width)
+  } else {
+    expect(first.y).toBeGreaterThanOrEqual(initial.y + initial.height)
+    expect(second.y).toBeCloseTo(first.y, 1)
+    expect(first.x + first.width).toBeLessThan(second.x)
+  }
+})
+
+test.describe('touch response feedback', () => {
+  test.use({ hasTouch: true })
+
+  for (const [width, height] of [[1000, 561], [430, 430], [480, 190]]) test(`both inputs and their feedback fit at ${width}×${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height })
+    await freezeClock(page)
+    await page.goto('/')
+    const settings = page.getByRole('button', { name: 'Session settings' })
+    if (await settings.isVisible()) await settings.tap()
+    await page.getByRole('button', { name: 'Dual', exact: true }).tap()
+    const close = page.getByRole('button', { name: 'Close dialog' })
+    if (await close.isVisible()) await close.tap()
+    await page.getByRole('button', { name: 'Begin session' }).tap()
+    await expect(page.getByRole('heading', { name: 'Get ready', exact: true })).toBeVisible()
+    await expect(page.locator('.game-region')).toBeFocused()
+    await page.clock.runFor(9000)
+    const position = page.getByRole('button', { name: /^Position/ })
+    const audio = page.getByRole('button', { name: /^Audio/ })
+    const heading = page.getByRole('heading', { name: 'Trial 1 of 20' })
+    const stop = page.getByRole('button', { name: 'Stop round' })
+    for (const target of [heading, stop, page.locator('.field'), position, audio]) {
+      await expect(target).toBeInViewport({ ratio: 1 })
+    }
+    for (const control of [position, audio]) expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(56)
+    expect(await page.evaluate(() => scrollY)).toBe(0)
+    await position.tap()
+    await audio.tap()
+    for (const control of [position, audio]) {
+      const feedback = control.locator('small')
+      await expect(feedback).toHaveText(/Correct|False alarm/)
+      await expect(feedback).toBeVisible()
+      await expect(feedback).toBeInViewport({ ratio: 1 })
+    }
+    expect(await page.evaluate(() => scrollY)).toBe(0)
+  })
+})
+
+test('continuing from scrolled results brings the whole round back into view', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 561 })
+  await page.clock.install()
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  await page.clock.runFor(69000)
+  const next = page.getByRole('button', { name: /Continue at/ })
+  await next.scrollIntoViewIfNeeded()
+  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0)
+  await next.click()
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  await expect(page.locator('.game-region')).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Stop round' })).toBeInViewport({ ratio: 1 })
+  await expect(page.locator('.field')).toBeInViewport({ ratio: 1 })
+  await page.clock.runFor(12000)
+  await expect(page.getByRole('button', { name: /^Position/ })).toBeInViewport({ ratio: 1 })
+})
+
+for (const [width, height] of [[500, 390], [320, 256]]) test(`the Russian Space shortcut fits inside its response at ${width}×${height}`, async ({ page }) => {
+  await page.setViewportSize({ width, height })
+  await page.addInitScript(() => localStorage.setItem('nback-locale', 'ru'))
+  await page.clock.install()
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Начать раунд' }).click()
+  await page.clock.runFor(9000)
+  const answer = page.getByRole('button', { name: /^Позиция/ })
+  const bounds = (await answer.boundingBox())!
+  for (const label of [answer.locator('kbd'), answer.locator('span')]) {
+    await expect(label).toBeVisible()
+    const box = (await label.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(bounds.x)
+    expect(box.x + box.width).toBeLessThanOrEqual(bounds.x + bounds.width)
   }
 })
 

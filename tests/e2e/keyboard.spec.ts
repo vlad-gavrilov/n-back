@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures'
+import { expect, freezeClock, test, type Page } from './fixtures'
 
 async function startDual(page: Page) {
   await page.clock.install()
@@ -81,6 +81,42 @@ test('global Space answers on background but retains button actions', async ({ p
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', theme!)
   await expect(page.locator('.answer-button small')).toHaveText('Match')
   await page.getByRole('button', { name: 'Stop round' }).focus(); await page.keyboard.press('Enter')
+  await expect(page.locator('.interruption-card')).toBeVisible()
+})
+
+test('early Space keeps the Visual board in view and a held key does not answer the first trial', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 561 })
+  await page.addInitScript(() => localStorage.setItem('nback-locale', 'ru'))
+  await freezeClock(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Начать раунд' }).click()
+  await expect(page.locator('.game-region')).toBeFocused()
+  const scroll = await page.evaluate(() => scrollY)
+  const spacePresses = await page.evaluateHandle(() => {
+    const prevented: boolean[] = []
+    window.addEventListener('keydown', event => {
+      if (event.code === 'Space') prevented.push(event.defaultPrevented)
+    })
+    return prevented
+  })
+
+  await page.keyboard.press('Space')
+  await page.clock.runFor(3000)
+  await expect(page.getByRole('heading', { name: 'Разминка 1 / 2' })).toBeVisible()
+  await page.keyboard.down('Space')
+  await page.clock.runFor(6000)
+  await page.keyboard.down('Space') // auto-repeat while the key is still held
+  await page.keyboard.up('Space')
+  expect(await spacePresses.jsonValue()).toEqual([true, true, true])
+  const progress = page.getByRole('heading', { name: 'Показ 1 из 20' })
+  const stop = page.getByRole('button', { name: /^Стоп/ })
+  for (const target of [progress, stop, page.locator('.field')]) await expect(target).toBeInViewport({ ratio: 1 })
+  expect(await page.evaluate(() => scrollY)).toBe(scroll)
+  const feedback = page.getByRole('button', { name: /^Позиция/ }).locator('small')
+  await expect(feedback).toHaveText('Совпадение')
+  await page.keyboard.press('Space')
+  await expect(feedback).toHaveText(/Верно|Лишнее нажатие/)
+  await stop.press('Space')
   await expect(page.locator('.interruption-card')).toBeVisible()
 })
 

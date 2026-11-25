@@ -25,25 +25,72 @@ h1 {
   font-weight: 600;
 }
 
+/* The toolbar and the field share an axis, independent of the settings rail. */
+
+.training[data-field-layout] {
+  /* Leave space for the toolbar, both gaps, touch targets and response feedback. */
+  --field-side: min(640px,67svh,100svh - var(--topbar-height) - var(--desktop-spacing) - 144px);
+  --field-margin: 4%;
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  max-width: none;
+}
+
+.training[data-field-layout] .training-heading {
+  width: min(100%,var(--field-side));
+  margin: 0 auto 8px;
+  min-height: 44px;
+  gap: 12px;
+}
+
+.training[data-field-layout] .mode-label {
+  margin: 0 0 2px;
+  line-height: 1.4;
+}
+
+.training[data-field-layout] h1 {
+  font-size: 20px;
+  letter-spacing: -.5px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.round-stop.secondary-button {
+  flex: none;
+  min-width: 64px;
+  min-height: 44px;
+  padding: 8px 14px;
+}
+
 /* Stimulus field */
 
 .game-region {
+  display: grid;
+  grid-template: "field" auto "controls" auto / minmax(0,1fr);
+  align-items: center;
+  gap: 8px;
   border-radius: 28px;
 }
 
+.field-frame {
+  grid-area: field;
+  justify-self: center;
+  display: grid;
+  width: min(100%,var(--field-side));
+  aspect-ratio: 1;
+}
+
 .field {
+  margin: var(--field-margin);
   display: grid;
   grid-template-columns: repeat(var(--grid),minmax(0,1fr));
   grid-template-rows: repeat(var(--grid),minmax(0,1fr));
-  aspect-ratio: 1;
-  max-width: 380px;
-  width: 100%;
-  margin: 0 auto;
   position: relative;
   background: var(--field);
   border-radius: 32px;
-  padding: 27px;
-  gap: 14px;
+  padding: clamp(10px,3vmin,32px);
+  gap: clamp(4px,1.4vmin,16px);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
@@ -56,14 +103,14 @@ h1 {
 }
 
 .field-cell span {
-  width: 28%;
+  width: min(28%,22px);
   aspect-ratio: 1;
   border-radius: 50%;
   background: var(--dot);
 }
 
 .field-cell.lit span {
-  width: 85%;
+  width: min(85%,96px);
   background: var(--accent);
   box-shadow: 0 0 0 6px var(--accent-soft);
 }
@@ -83,7 +130,7 @@ h1 {
   align-items: center;
   justify-content: center;
   background: var(--field);
-  border-radius: 32px;
+  border-radius: inherit;
 }
 
 .countdown {
@@ -138,35 +185,43 @@ h1 {
 
 /* Responses and round actions */
 
-.round-status {
-  font-size: 12px;
-  text-align: center;
-  color: var(--muted);
-  margin: 20px 0;
-  min-height: 20px;
+.answers,
+.start-row,
+.observation-hint {
+  grid-area: controls;
+  justify-self: center;
 }
 
 .answers {
   display: flex;
-  gap: 14px;
-  width: 100%;
-  max-width: 480px;
-  margin: auto;
+  justify-content: center;
+  gap: 12px;
+  max-width: 100%;
+  padding-bottom: 18px;
 }
 
 .answer-button {
-  flex: 1;
-  min-height: 72px;
-  display: grid;
-  grid-template-columns: 1fr auto;
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 3px 16px;
-  text-align: left;
+  justify-content: center;
+  gap: 8px;
+  min-width: 122px;
+  min-height: 44px;
+  padding: 6px 14px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--surface);
-  padding: 12px 20px;
   user-select: none;
+}
+
+.answer-button:disabled {
+  /* Reserve these locations from the first countdown frame to the last trial. */
+  visibility: hidden;
+}
+
+.answer-button kbd {
+  order: -1;
 }
 
 .answer-button>span {
@@ -175,8 +230,18 @@ h1 {
 }
 
 .answer-button small {
-  font-size: 11px;
+  position: absolute;
+  top: calc(100% + 2px);
+  inset-inline: 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.25;
+  visibility: hidden;
   color: var(--muted);
+}
+
+.answer-button:is(.correct,.incorrect,.registered) small {
+  visibility: visible;
 }
 
 kbd {
@@ -204,16 +269,66 @@ kbd {
 
 .start-row {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 15px;
-  margin-top: 24px;
+  justify-content: center;
+  gap: 6px 18px;
 }
 
-.start-row p {
-  font-size: 11px;
+.start-row .primary-button {
+  min-height: 44px;
+  padding: 8px 18px;
+  gap: 12px;
+}
+
+.shortcut-hint,
+.touch-hint,
+.observation-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--muted);
   text-align: center;
-  margin: 0;
-  max-width: 400px;
+}
+
+.shortcut-hint,
+.shortcut-hint span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shortcut-hint {
+  gap: 12px;
+}
+
+.observation-hint {
+  padding-bottom: 18px;
+}
+
+.touch-hint {
+  display: none;
+}
+
+@media (any-pointer:coarse) {
+  .answers {
+    width: min(100%,438px);
+  }
+
+  .answer-button {
+    flex: 1;
+    min-width: 0;
+    min-height: 56px;
+  }
+}
+
+@media (hover:none) and (pointer:coarse) {
+  :root:not([data-input-modality=keyboard]) .answer-button kbd,
+  :root:not([data-input-modality=keyboard]) .shortcut-hint {
+    display: none;
+  }
+
+  :root:not([data-input-modality=keyboard]) .touch-hint {
+    display: block;
+  }
 }

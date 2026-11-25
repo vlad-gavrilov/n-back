@@ -1,81 +1,92 @@
-@media (min-width:901px) {
-  .app-shell {
-    --desktop-spacing: clamp(12px,10svh - 68px,56px);
-  }
-
-  .topbar {
-    height: clamp(64px,9svh,116px);
-  }
-
-  .workspace {
-    padding-block: var(--desktop-spacing);
-  }
-
-  .section-heading {
-    margin-bottom: min(38px,var(--desktop-spacing));
-  }
-
-  .settings fieldset,
-  .settings .select-label {
-    margin-bottom: min(28px,var(--desktop-spacing));
-  }
-
-  .field {
-    /* Grow from 280px at 800px tall to the desktop cap at 1020px. */
-    width: min(100%,max(280px,50svh - 120px));
-  }
-
-  footer {
-    padding-block: calc(var(--desktop-spacing) / 2);
+@media (max-height:800px) {
+  .settings-note {
+    margin-top: 18px;
+    padding-top: 14px;
   }
 }
 
-@media (min-width:1100px) {
-  .training {
-    padding: 0 30px;
-  }
+/* App selects compact settings once for both layout and audio feedback. */
 
-  .field {
-    max-width: 390px;
-  }
+.app-shell[data-compact] {
+  --gutter: 24px;
+  --compact-field-height: calc(100svh - 164px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  padding-inline: max(var(--gutter),env(safe-area-inset-left)) max(var(--gutter),env(safe-area-inset-right));
 }
 
-@media (max-width:900px) {
-  .app-shell {
-    padding: 0 28px;
-  }
+[data-compact] .settings,
+[data-compact] .brand-caption,
+[data-compact] .topbar .language-switch {
+  display: none;
+}
 
-  .workspace {
-    gap: 36px;
-    grid-template-columns: 210px minmax(0,1fr);
-  }
+[data-compact] .mobile-settings {
+  display: block;
+}
 
-  .settings {
-    padding-right: 22px;
-  }
+[data-compact] .topbar {
+  height: clamp(56px,8svh,76px);
+  gap: 10px;
+}
 
-  .brand-caption {
-    display: none;
-  }
+[data-compact] .workspace {
+  display: block;
+  padding-block: 20px 28px;
+}
 
-  .field {
-    gap: 10px;
-    padding: 23px;
-  }
+[data-compact] .training {
+  max-width: 600px;
+  margin-inline: auto;
+}
 
-  h1 {
-    font-size: 31px;
-  }
+[data-compact] .training[data-field-layout] {
+  --field-side: min(600px,75vw,var(--compact-field-height));
+  --field-margin: 3%;
+}
+
+[data-compact] .training-heading {
+  margin-bottom: 16px;
+}
+
+[data-compact] .training[data-field-layout] .training-heading {
+  width: 100%;
+}
+
+[data-compact] .answers {
+  width: min(100%,438px);
+}
+
+[data-compact] .answer-button {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+}
+
+[data-compact][data-round-active] .topbar,
+[data-compact][data-round-active] footer {
+  display: none;
+}
+
+[data-compact][data-round-active] .workspace {
+  padding-block: 0;
+}
+
+[data-compact][data-round-active] .training {
+  min-height: 100svh;
+  padding-block: max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-bottom));
+}
+
+[data-compact][data-round-active] .game-region {
+  flex: 1;
+  grid-template-rows: 1fr auto;
 }
 
 @media (max-width:650px) {
-  .app-shell {
-    padding: 0 max(20px,env(safe-area-inset-left)) 0 max(20px,env(safe-area-inset-right));
+  .app-shell[data-compact] {
+    --gutter: 20px;
   }
 
-  .topbar {
-    height: 86px;
-    gap: 10px;
+  [data-compact] .training[data-field-layout] {
+    --field-side: min(100%,var(--compact-field-height));
   }
 
   .wordmark {
@@ -83,76 +94,13 @@
     gap: 9px;
   }
 
-  nav {
-    gap: 6px;
-  }
-
-  nav button {
-    font-size: 11px;
-  }
-
   .theme-toggle {
     width: 44px;
     height: 44px;
   }
 
-  .workspace {
-    display: block;
-    padding: 28px 0 32px;
-  }
-
-  .settings {
-    display: none;
-  }
-
-  .training {
-    max-width: 480px;
-    margin: auto;
-  }
-
-  .training-heading {
-    margin-bottom: 24px;
-  }
-
-  .mobile-settings {
-    display: block;
-  }
-
-  h1 {
-    font-size: 30px;
-    letter-spacing: -1px;
-  }
-
   .field {
-    max-width: 350px;
     border-radius: 26px;
-    padding: 23px;
-    gap: 10px;
-  }
-
-  .answers {
-    gap: 10px;
-  }
-
-  .answer-button {
-    padding: 12px 16px;
-    min-height: 72px;
-  }
-
-  .round-status {
-    margin: 18px 0;
-  }
-
-  .start-row {
-    margin-top: 20px;
-  }
-
-  .start-row p {
-    max-width: 290px;
-  }
-
-  .primary-button {
-    min-height: 54px;
   }
 
   footer {
@@ -166,7 +114,8 @@
     margin: 0;
   }
 
-  .results {
+  .results,
+  dialog {
     padding: 22px;
   }
 
@@ -182,19 +131,14 @@
     width: 100%;
   }
 
-  dialog {
-    padding: 22px;
-  }
-
   .dialog-header h2 {
     font-size: 21px;
   }
 }
 
 @media (max-width:370px) {
-  .app-shell {
-    padding-left: 16px;
-    padding-right: 16px;
+  .app-shell[data-compact] {
+    --gutter: 16px;
   }
 
   .wordmark {
@@ -210,79 +154,48 @@
     height: 5px;
   }
 
-  .training-heading h1 {
-    font-size: 26px;
-  }
-
-  .answer-button {
-    padding: 12px;
-  }
-
-  .answer-button>span {
-    font-size: 13px;
-  }
-
   .example-sequence {
     gap: 15px;
   }
 }
 
+/* A short window can fit the start action beside the preview. During play,
+   each thumb gets its own side when the field and two targets fit across. */
+
 @media (orientation:landscape) and (max-height:560px) {
-  .topbar {
-    height: 66px;
+  [data-compact] .workspace {
+    padding-block: 8px 12px;
   }
 
-  .workspace {
-    display: block;
-    padding: 20px 0;
+  [data-compact][data-round-active] .workspace {
+    /* The round measures the usable height inside these safe-area gutters. */
+    container-type: size;
+    height: 100svh;
+    padding-block: max(5px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-bottom));
   }
 
-  .settings {
-    display: none;
+  [data-compact] .training[data-field-layout] {
+    --field-side: min(360px,max(100px,100svh - 140px));
+    max-width: none;
   }
 
-  .mobile-settings {
-    display: block;
-  }
-
-  .training {
-    max-width: 780px;
-  }
-
-  .training-heading {
-    margin-bottom: 15px;
-  }
-
-  h1 {
-    font-size: 25px;
-  }
-
-  .game-region {
-    display: grid;
-    grid-template-columns: minmax(0,280px) minmax(150px,1fr);
-    gap: 10px 30px;
-    align-items: center;
-  }
-
-  .field {
-    grid-row: 1/3;
-    max-width: 260px;
-  }
-
-  .round-status {
-    margin: 0;
-  }
-
-  .answers {
-    flex-direction: column;
+  [data-compact] .game-region {
+    grid-template: "field controls" auto / minmax(0,1.25fr) minmax(0,1fr);
+    column-gap: 12px;
   }
 
   .start-row {
-    margin-top: 16px;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  footer {
-    padding: 15px 0;
+  .start-row .primary-button {
+    max-width: 100%;
+  }
+
+  .shortcut-hint {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .interruption-card {
@@ -292,6 +205,65 @@
 
   .interruption-card>span {
     font-size: 28px;
+  }
+
+  [data-compact][data-round-active] .training {
+    container: round / inline-size;
+    --field-side: min(360px,100cqh - 65px);
+    min-height: 100%;
+    padding-block: 0;
+  }
+
+  [data-compact][data-round-active] .game-region {
+    grid-template-rows: 1fr;
+    grid-template-columns: minmax(0,1fr) minmax(100px,36%);
+  }
+
+  [data-round-active] .answers {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  [data-round-active] .answer-button {
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 2px 6px;
+    padding-inline: 4px;
+  }
+}
+
+/* Reserve the field's side plus an 84px target and a 12px gap on each side. */
+@container round (min-width: calc(min(360px, 100cqh - 65px) + 192px)) {
+  [data-round-active] .training-heading > div {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  [data-compact][data-round-active] .game-region {
+    grid-template-columns: minmax(84px,1fr) minmax(0,var(--field-side)) minmax(84px,1fr);
+    grid-template-areas: "position field audio";
+  }
+
+  [data-round-active] .answers {
+    display: contents;
+  }
+
+  [data-round-active] .answer-button {
+    align-self: end;
+    justify-self: center;
+    width: min(100%,132px);
+    min-height: 64px;
+    margin-bottom: max(18px,9svh);
+  }
+
+  [data-round-active] [data-channel=visual],
+  [data-round-active] .observation-hint {
+    grid-area: position;
+  }
+
+  [data-round-active] [data-channel=audio] {
+    grid-area: audio;
   }
 }
 
@@ -337,141 +309,5 @@ button:not(:disabled):active {
 
   a {
     transition: color .15s;
-  }
-}
-
-/* Height adjustments layer over the earlier width and landscape layouts. */
-
-@media (min-width:901px) and (max-height:800px) {
-  .workspace {
-    gap: 55px;
-  }
-
-  .training-heading {
-    margin-bottom: 20px;
-  }
-
-  h1 {
-    font-size: 32px;
-  }
-
-  .game-region {
-    display: grid;
-    grid-template-columns: minmax(180px,280px) minmax(140px,1fr);
-    gap: 12px 25px;
-    align-items: center;
-  }
-
-  .field {
-    grid-row: 1/3;
-    max-width: 280px;
-  }
-
-  .round-status {
-    margin: 0;
-  }
-
-  .answers {
-    flex-direction: column;
-  }
-
-  .start-row {
-    margin-top: 20px;
-  }
-
-  .settings-note {
-    margin-top: 18px;
-    padding-top: 14px;
-  }
-}
-
-@media (orientation:landscape) and (max-height:560px) {
-  .topbar {
-    height: 56px;
-  }
-
-  .workspace {
-    padding: 16px 0;
-  }
-
-  .training-heading {
-    margin-bottom: 12px;
-  }
-
-  .field {
-    max-width: min(230px,calc(100svh - 180px));
-  }
-
-  .start-row {
-    margin-top: 12px;
-  }
-
-  .start-row p {
-    display: none;
-  }
-}
-
-@media (orientation:landscape) and (max-height:560px) {
-  .training-heading h1 {
-    font-size: 25px;
-  }
-
-  .training-heading .mode-label {
-    margin-bottom: 6px;
-  }
-
-  .field {
-    max-width: min(210px,calc(100svh - 200px));
-  }
-}
-
-@media (orientation:landscape) and (max-height:400px) {
-  .topbar {
-    height: 48px;
-  }
-
-  .workspace {
-    padding: 8px 0;
-  }
-
-  .training-heading {
-    margin-bottom: 8px;
-  }
-
-  .training-heading .mode-label {
-    display: none;
-  }
-
-  .field {
-    max-width: clamp(128px,calc(100svh - 190px),180px);
-    padding: 12px;
-    gap: 6px;
-  }
-
-  .game-region {
-    gap: 8px 20px;
-  }
-
-  .answers {
-    gap: 8px;
-  }
-
-  .answer-button {
-    min-height: 56px;
-    padding: 6px 12px;
-  }
-
-  .round-status {
-    font-size: 11px;
-    min-height: 16px;
-  }
-
-  .start-row {
-    margin-top: 8px;
-  }
-
-  .start-row button {
-    min-height: 46px;
-    padding: 10px 24px;
   }
 }

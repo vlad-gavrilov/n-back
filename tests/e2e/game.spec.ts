@@ -114,11 +114,13 @@ for (const locale of locales) {
       expect(pageHeight).toBeLessThanOrEqual(height)
       await expect(start).toBeInViewport({ ratio: 1 })
       await expect(page.getByRole('contentinfo')).toBeInViewport({ ratio: 1 })
-      if (height === 1026) {
-        const field = await page.locator('.field').boundingBox()
-        expect(field?.width).toBeCloseTo(390, 1)
-        expect(field?.height).toBeCloseTo(390, 1)
-      }
+      const heading = (await page.locator('.training-heading').boundingBox())!
+      const field = (await page.locator('.field').boundingBox())!
+      expect(heading.width).toBeGreaterThanOrEqual(Math.min(640, height * .64))
+      expect(heading.width).toBeLessThanOrEqual(640)
+      expect(field.width).toBeCloseTo(heading.width * .92, 1)
+      expect(field.x + field.width / 2).toBeCloseTo(heading.x + heading.width / 2, 1)
+      expect(field.height).toBeCloseTo(field.width, 1)
     })
   }
 }

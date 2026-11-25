@@ -12,8 +12,8 @@ import { useTraining } from './training/useTraining'
 
 type Dialog = 'help' | 'settings' | 'research'
 
-// Match the breakpoint at which the settings sidebar moves into a dialog.
-const compactSettingsQuery = '(max-width:650px), (orientation:landscape) and (max-height:560px)'
+// A 240px sidebar and the page gutters leave about 520px for the field at 864px.
+const compactSettingsQuery = '(max-width:864px), (orientation:landscape) and (max-height:560px)'
 const compactSettings = () => matchMedia(compactSettingsQuery).matches
 function subscribeToLayout(onChange: () => void) {
   const media = matchMedia(compactSettingsQuery)
@@ -28,7 +28,8 @@ export default function App() {
   const { config, view, audio } = state
   const compact = useSyncExternalStore(subscribeToLayout, compactSettings)
   const heading = useRef<HTMLHeadingElement>(null)
-  const locked = isSessionActive(view.phase) || audio.phase === 'loading'
+  const active = isSessionActive(view.phase)
+  const locked = active || audio.phase === 'loading'
   useEffect(installFocusModality, [])
 
   function openDialog(next: Dialog, opener: HTMLButtonElement) {
@@ -50,7 +51,7 @@ export default function App() {
   const titles = { help: t.helpTitle, settings: t.settings, research: t.researchTitle }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-compact={compact || undefined} data-round-active={active || undefined}>
       <AppHeader t={t} locked={locked} theme={theme} toggleTheme={toggleTheme} languageControl={languageControl}
         onHelp={opener => openDialog('help', opener)} />
       <main className="workspace">

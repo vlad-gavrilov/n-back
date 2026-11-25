@@ -1,15 +1,9 @@
-import { expect, test, type Page } from './fixtures'
+import { expect, freezeClock, test, type Page } from './fixtures'
 import { tabToNextControl } from './keyboard-navigation'
 
 type TestAudioWindow = {
   __testAudioContext: AudioContext
   __releaseAudioResume?: () => void
-}
-
-async function freezeClock(page: Page) {
-  const time = new Date('2026-11-04T12:00:00Z')
-  await page.clock.install({ time })
-  await page.clock.pauseAt(time)
 }
 
 async function startRound(page: Page, mode: 'visual' | 'dual') {

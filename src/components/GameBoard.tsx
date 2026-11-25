@@ -1,7 +1,8 @@
-import type { CSSProperties, RefObject } from 'react'
+import type { CSSProperties, KeyboardEvent, ReactNode, RefObject } from 'react'
 import { isFixationCell, type Channel, type SessionConfig } from '../game/config'
-import { isSessionActive, type SessionView } from '../game/session'
+import type { SessionView } from '../game/session'
 import type { Messages } from '../i18n'
+import { getResponseChannel } from '../input/keyboard'
 import { inputTime } from '../input/time'
 
 interface GameBoardProps {
@@ -10,15 +11,7 @@ interface GameBoardProps {
   boardRef: RefObject<HTMLDivElement | null>
   onAnswer: (channel: Channel, occurredAt: number) => void
   t: Messages
-}
-
-function roundStatus(view: SessionView, config: SessionConfig, t: Messages) {
-  switch (view.phase) {
-    case 'warmup': return t.warmupProgress(view.index + 1, config.n)
-    case 'running': return t.trial(view.index - config.n + 1)
-    case 'countdown': return t.settle
-    default: return t.duration(config.trialMs)
-  }
+  children: ReactNode
 }
 
 function answerFeedback(answer: boolean | undefined, liveFeedback: boolean, t: Messages) {
@@ -29,59 +22,81 @@ function answerFeedback(answer: boolean | undefined, liveFeedback: boolean, t: M
     : { className: 'incorrect', label: t.falseAlarm }
 }
 
-export function GameBoard({ config, view, boardRef, onAnswer, t }: GameBoardProps) {
+function preventEarlySpaceScroll(event: KeyboardEvent<HTMLDivElement>) {
+  if (event.target !== event.currentTarget || event.nativeEvent.isComposing) return
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+  if (getResponseChannel(event, 'visual') === 'visual') event.preventDefault()
+}
+
+export function GameBoard({ config, view, boardRef, onAnswer, t, children }: GameBoardProps) {
   const { gridSize, mode } = config
-  const active = isSessionActive(view.phase)
+  const observing = view.phase === 'countdown' || view.phase === 'warmup'
   const channels: Channel[] = mode === 'dual' ? ['visual', 'audio'] : ['visual']
   const visualShortcut = mode === 'dual' ? 'F' : t.space
 
   return (
-    <div className="game-region" ref={boardRef} tabIndex={-1} aria-label={t.gameControls}>
-      <div className={`field ${active ? 'is-active' : ''}`} style={{ '--grid': gridSize } as CSSProperties} aria-label={t.field(gridSize)}>
-        {Array.from({ length: gridSize ** 2 }, (_, index) => {
-          const fixation = isFixationCell(gridSize, index)
-          const lit = view.cue === index
-          return (
-            <div
-              key={index}
-              className={`field-cell ${fixation ? 'fixation' : ''} ${lit ? 'lit' : ''}`}
-              data-active={lit ? 'true' : undefined}
-              aria-hidden="true"
-            >
-              <span />
-            </div>
-          )
-        })}
-        {view.phase === 'countdown' && <div className="countdown" role="status">{t.number(view.countdown)}</div>}
+    <div className="game-region" role="group" ref={boardRef} tabIndex={-1} aria-label={t.gameControls}
+      onKeyDown={observing && mode === 'visual' ? preventEarlySpaceScroll : undefined}>
+      <div className="field-frame">
+        <div className="field" style={{ '--grid': gridSize } as CSSProperties} aria-label={t.field(gridSize)}>
+          {Array.from({ length: gridSize ** 2 }, (_, index) => {
+            const fixation = isFixationCell(gridSize, index)
+            const lit = view.cue === index
+            return (
+              <div
+                key={index}
+                className={`field-cell ${fixation ? 'fixation' : ''} ${lit ? 'lit' : ''}`}
+                data-active={lit ? 'true' : undefined}
+                aria-hidden="true"
+              >
+                <span />
+              </div>
+            )
+          })}
+          {view.phase === 'countdown' && <div className="countdown" role="status">{t.number(view.countdown)}</div>}
+        </div>
       </div>
 
-      <div className="round-status" aria-live="polite">{roundStatus(view, config, t)}</div>
-      <div className="answers">
-        {channels.map(channel => {
-          const feedback = answerFeedback(view.answered[channel], config.liveFeedback, t)
-          return (
-            <button
-              key={channel}
-              data-channel={channel}
-              className={`answer-button ${feedback.className}`}
-              disabled={view.phase !== 'running'}
-              onPointerDown={event => {
-                if (event.button !== 0) return
-                event.preventDefault()
-                onAnswer(channel, inputTime(event.nativeEvent))
-              }}
-              onClick={event => {
-                // Pointer responses are timed on press. Keyboard and assistive clicks have detail zero.
-                if (event.detail === 0) onAnswer(channel, inputTime(event.nativeEvent))
-              }}
-            >
-              <span>{channel === 'visual' ? t.position : t.audio}</span>
-              <kbd>{channel === 'visual' ? visualShortcut : 'J'}</kbd>
-              <small>{feedback.label}</small>
-            </button>
-          )
-        })}
-      </div>
+      {view.phase === 'idle' ? (
+        <div className="start-row">
+          {children}
+          <p className="shortcut-hint">
+            <span><kbd>{visualShortcut}</kbd> {t.position}</span>
+            {mode === 'dual' && <span><kbd>J</kbd> {t.audio}</span>}
+          </p>
+          <p className="touch-hint">{mode === 'dual' ? t.touchDual : t.touchVisual}</p>
+        </div>
+      ) : (
+        <div className="answers">
+          {channels.map(channel => {
+            const feedback = answerFeedback(view.answered[channel], config.liveFeedback, t)
+            return (
+              <button
+                key={channel}
+                data-channel={channel}
+                className={`answer-button ${feedback.className}`}
+                disabled={view.phase !== 'running'}
+                onPointerDown={event => {
+                  if (event.button !== 0) return
+                  event.preventDefault()
+                  onAnswer(channel, inputTime(event.nativeEvent))
+                }}
+                onClick={event => {
+                  // Pointer responses are timed on press. Keyboard and assistive clicks have detail zero.
+                  if (event.detail === 0) onAnswer(channel, inputTime(event.nativeEvent))
+                }}
+              >
+                <span>{channel === 'visual' ? t.position : t.audio}</span>
+                <kbd>{channel === 'visual' ? visualShortcut : 'J'}</kbd>
+                <small>{feedback.label}</small>
+              </button>
+            )
+          })}
+        </div>
+      )}
+      {observing && (
+        <p className="observation-hint">{view.phase === 'countdown' ? t.settle : t.observe}</p>
+      )}
     </div>
   )
 }

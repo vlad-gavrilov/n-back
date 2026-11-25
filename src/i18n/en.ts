@@ -42,11 +42,8 @@ export const en = {
   settingsHint: (n: number) => `Match what appeared exactly ${n}${format.stepUnit(n)} ago. If nothing matches, let it pass.`,
 
   countdown: 'Get ready',
-  warmup: 'Watch & remember',
-  running: 'Find the matches',
   complete: 'Round complete',
   interrupted: 'Take your time',
-  idle: 'A little further back.',
   theme: (theme: 'light' | 'dark') => `Switch to ${theme} theme`,
   modeLabel: (dual: boolean, n: number) => `${dual ? 'Position + sound' : 'Position'} / ${n}-back`,
 
@@ -69,9 +66,10 @@ export const en = {
   field: (n: number) => `${n} by ${n} stimulus field`,
   startFresh: 'Start fresh',
 
-  warmupProgress: (i: number, n: number) => `Warm-up ${i} / ${n} · Just watch`,
+  warmupProgress: (i: number, n: number) => `Warm-up ${i} / ${n}`,
   trial: (i: number) => `Trial ${i} of ${SCORED_TRIALS}`,
-  settle: 'Settle in. Your round is about to begin.',
+  settle: 'Focus on the field.',
+  observe: 'Just observe.',
   notScored: 'This round was not scored.',
   duration: (ms: number) => `${SCORED_TRIALS} trials at ${format.seconds(ms)} each.`,
   space: 'Space',
@@ -80,10 +78,11 @@ export const en = {
   falseAlarm: 'False alarm',
   registered: 'Registered',
   stop: 'Stop round',
+  stopShort: 'Stop',
   preparing: 'Preparing sound…',
   begin: 'Begin session',
-  dualHint: 'Headphones help. Track position and sound independently.',
-  visualHint: 'A match is exactly N steps back. No match? No press.',
+  touchVisual: 'Tap Position for a match.',
+  touchDual: 'Tap Position, Audio, or both when they match.',
 
   footer: 'Make room for a little focus.',
   research: 'Research',

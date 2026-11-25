@@ -3,11 +3,16 @@
   padding-right: 30px;
 }
 
+.settings fieldset,
+.settings .select-label {
+  margin-bottom: min(28px,var(--desktop-spacing));
+}
+
 .section-heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 38px;
+  margin-bottom: min(38px,var(--desktop-spacing));
 }
 
 .section-heading h2 {

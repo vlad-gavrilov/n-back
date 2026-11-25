@@ -123,13 +123,15 @@ p {
 /* Page shell and navigation */
 
 .app-shell {
+  --topbar-height: clamp(64px,9svh,116px);
+  --desktop-spacing: clamp(12px,10svh - 68px,56px);
   max-width: 1400px;
   margin: auto;
-  padding: 0 56px;
+  padding: 0 clamp(24px,4vw,56px);
 }
 
 .topbar {
-  height: 116px;
+  height: var(--topbar-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -214,6 +216,6 @@ nav button {
 .workspace {
   display: grid;
   grid-template-columns: 240px minmax(0,1fr);
-  gap: 80px;
-  padding: 54px 0 62px;
+  gap: clamp(24px,4vw,64px);
+  padding-block: var(--desktop-spacing);
 }

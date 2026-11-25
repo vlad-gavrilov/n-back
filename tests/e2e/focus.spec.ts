@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures'
+import { expect, freezeClock, test } from './fixtures'
 import { tabToNextControl } from './keyboard-navigation'
 
 test.use({ hasTouch: true, viewport: { width: 360, height: 800 } })
@@ -29,4 +29,36 @@ test('touching the field and starting a round leave no container outline', async
   await page.getByRole('button', { name: 'Begin session', exact: true }).tap()
   await expect(board).toBeFocused()
   expect(await board.evaluate(el => getComputedStyle(el).outlineStyle)).toBe('none')
+})
+
+test('touch and keyboard instructions follow the last input on a tablet', async ({ page, browserName }) => {
+  await page.setViewportSize({ width: 1024, height: 768 })
+  await freezeClock(page)
+  await page.goto('/')
+  const shortcuts = page.locator('.shortcut-hint')
+  const touch = page.locator('.touch-hint')
+  await expect(touch).toHaveText('Tap Position for a match.')
+  await expect(touch).toBeVisible()
+  await expect(shortcuts).toBeHidden()
+
+  await tabToNextControl(page, browserName)
+  await expect(shortcuts.getByText('Space', { exact: true })).toBeVisible()
+  await expect(touch).toBeHidden()
+  await page.getByRole('button', { name: 'Dual', exact: true }).tap()
+  await expect(touch).toHaveText('Tap Position, Audio, or both when they match.')
+  await expect(touch).toBeVisible()
+  await expect(shortcuts).toBeHidden()
+  await tabToNextControl(page, browserName)
+  for (const key of ['F', 'J']) await expect(shortcuts.getByText(key, { exact: true })).toBeVisible()
+  await expect(touch).toBeHidden()
+
+  await page.getByRole('button', { name: 'Begin session' }).press('Enter')
+  await expect(page.locator('.game-region')).toBeFocused()
+  await page.clock.runFor(9000)
+  const position = page.getByRole('button', { name: /^Position/ })
+  const audio = page.getByRole('button', { name: /^Audio/ })
+  await expect(position.getByText('F', { exact: true })).toBeVisible()
+  await expect(audio.getByText('J', { exact: true })).toBeVisible()
+  await position.tap()
+  for (const control of [position, audio]) await expect(control.locator('kbd')).toBeHidden()
 })

@@ -1,4 +1,11 @@
-import { test as base } from '@playwright/test'
+import { test as base, type Page } from '@playwright/test'
+
+export async function freezeClock(page: Page) {
+  const noon = new Date('2026-11-04T12:00:00Z')
+  // The clock runs between the two commands, so start an hour before the pause.
+  await page.clock.install({ time: noon.getTime() - 60 * 60 * 1000 })
+  await page.clock.pauseAt(noon)
+}
 
 // Replace the output context so browser tests can exercise the player silently.
 export const test = base.extend({
