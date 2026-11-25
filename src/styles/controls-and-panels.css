@@ -51,7 +51,7 @@
 
 footer {
   border-top: 1px solid var(--line);
-  padding: calc((var(--desktop-spacing) - 4px) / 2) 0;
+  padding: var(--footer-padding) 0;
   display: flex;
   align-items: center;
   gap: 26px;
@@ -87,10 +87,15 @@ footer button {
 /* Round results */
 
 .results {
+  --result-spacing: 28px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 24px;
-  padding: 28px;
+  padding: var(--result-spacing);
+}
+
+.app-shell:not([data-compact]) .results {
+  --result-spacing: min(28px,var(--desktop-spacing));
 }
 
 .score-banner>span {
@@ -122,7 +127,7 @@ footer button {
   display: grid;
   grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
   gap: 28px;
-  margin-top: 25px;
+  margin-top: min(25px,var(--result-spacing));
 }
 
 .channel-stats h3 {
@@ -138,7 +143,7 @@ footer button {
   justify-content: space-between;
   gap: 12px;
   font-size: 12px;
-  padding: 9px 0;
+  padding: min(9px,var(--result-spacing) / 2) 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -155,7 +160,15 @@ dd {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  margin-top: 28px;
+  margin-top: var(--result-spacing);
+}
+
+.result-actions :is(.primary-button,.secondary-button) {
+  padding-inline: min(25px,var(--result-spacing));
+}
+
+.result-actions .primary-button {
+  gap: var(--result-spacing);
 }
 
 /* Dialogs */
@@ -286,4 +299,8 @@ dialog::backdrop {
 .audio-feedback[role=status] {
   color: var(--muted);
   margin: 12px 0 20px;
+}
+
+.training-heading > .audio-feedback[role=status] {
+  margin: 0;
 }

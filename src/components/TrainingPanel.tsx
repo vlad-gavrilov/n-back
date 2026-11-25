@@ -29,6 +29,7 @@ export function TrainingPanel({ state, controller, headingRef, openSettings, fee
   const active = isSessionActive(view.phase)
   const hasField = active || view.phase === 'idle'
   const busy = audio.phase === 'loading'
+  const preparingSession = busy && audio.purpose === 'session'
   const panel = useRef<HTMLElement>(null)
   const board = useRef<HTMLDivElement>(null)
   const interruptionHeading = useRef<HTMLHeadingElement>(null)
@@ -51,7 +52,7 @@ export function TrainingPanel({ state, controller, headingRef, openSettings, fee
     return (
       <GameBoard config={config} view={view} boardRef={board} onAnswer={controller.respond} t={t}>
         <button className="primary-button" disabled={busy} onClick={() => controller.start()}>
-          {busy && audio.purpose === 'session' ? t.preparing : t.begin}<span aria-hidden="true">↗</span>
+          {preparingSession ? t.preparing : t.begin}<span aria-hidden="true">↗</span>
         </button>
       </GameBoard>
     )
@@ -64,6 +65,7 @@ export function TrainingPanel({ state, controller, headingRef, openSettings, fee
           <p className="mode-label">{t.modeLabel(config.mode === 'dual', config.n)}</p>
           <h1 ref={headingRef} tabIndex={-1} aria-live="polite">{roundTitle(view, config, t)}</h1>
         </div>
+        {preparingSession && feedback}
         {active ? (
           <button className="round-stop secondary-button" aria-label={t.stop} onClick={() => controller.interrupt('stopped')}>
             {t.stopShort}
@@ -73,7 +75,7 @@ export function TrainingPanel({ state, controller, headingRef, openSettings, fee
             onClick={event => openSettings(event.currentTarget)}>☷</button>
         )}
       </div>
-      {feedback}
+      {!preparingSession && feedback}
       {roundContent()}
     </section>
   )

@@ -24,6 +24,96 @@ function expectStableGeometry(actual: Awaited<ReturnType<typeof fieldGeometry>>,
   }
 }
 
+function desktopFrame(page: Page) {
+  return page.locator('.workspace > .settings').evaluate(sidebar => {
+    const divider = sidebar.getBoundingClientRect()
+    return { top: divider.top, bottom: divider.bottom, footer: document.querySelector('footer')!.getBoundingClientRect().top }
+  })
+}
+
+for (const [width, height] of [[1716, 1026], [1366, 768]]) test(`the desktop divider and footer stay fixed when starting or restarting at ${width}×${height}`, async ({ page }) => {
+  await page.setViewportSize({ width, height })
+  await freezeClock(page)
+  await page.goto('/')
+  const start = page.getByRole('button', { name: 'Begin session' })
+  await start.waitFor()
+  await page.evaluate(() => document.fonts.ready)
+  const frame = await desktopFrame(page)
+  const field = await page.locator('.field').boundingBox()
+
+  await start.click()
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  expect(await desktopFrame(page)).toEqual(frame)
+  expect(await page.locator('.field').boundingBox()).toEqual(field)
+  await page.clock.runFor(3000)
+  await expect(page.getByText(/Warm-up 1/)).toBeVisible()
+  expect(await desktopFrame(page)).toEqual(frame)
+  await page.clock.runFor(6000)
+  await page.getByRole('button', { name: /^Position/ }).click()
+  expect(await desktopFrame(page)).toEqual(frame)
+
+  await page.getByRole('button', { name: 'Stop round' }).click()
+  const restart = page.getByRole('button', { name: 'Start fresh' })
+  await expect(restart).toBeVisible()
+  expect(await desktopFrame(page)).toEqual(frame)
+  await restart.click()
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  expect(await desktopFrame(page)).toEqual(frame)
+  await page.clock.runFor(69000)
+  const next = page.getByRole('button', { name: /Continue at/ })
+  await expect(next).toBeVisible()
+  expect(await desktopFrame(page)).toEqual(frame)
+  await next.click()
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  expect(await desktopFrame(page)).toEqual(frame)
+  expect(await page.locator('.field').boundingBox()).toEqual(field)
+})
+
+test('both correct and incorrect feedback have space below the response button', async ({ page }) => {
+  await page.setViewportSize({ width: 1716, height: 1026 })
+  await freezeClock(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  await page.clock.runFor(9000)
+  const answer = page.getByRole('button', { name: /^Position/ })
+  const label = answer.locator('small')
+  const seen = new Set<string>()
+  for (let trial = 0; trial < 20 && seen.size < 2; trial++) {
+    await answer.click()
+    await expect(label).toBeVisible()
+    seen.add(await label.innerText())
+    const button = (await answer.boundingBox())!
+    const feedback = (await label.boundingBox())!
+    expect(feedback.y - (button.y + button.height)).toBeGreaterThanOrEqual(8)
+    await page.clock.runFor(3000)
+  }
+  expect(seen).toEqual(new Set(['Correct', 'False alarm']))
+})
+
+test('preparing sound uses the same desktop frame as the countdown', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 })
+  await freezeClock(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Dual', exact: true }).click()
+  await page.evaluate(() => document.fonts.ready)
+  const frame = await desktopFrame(page)
+  const field = await page.locator('.field').boundingBox()
+  let release!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/audio/*.wav*', async route => { await pending; await route.continue() })
+  try {
+    await page.getByRole('button', { name: 'Begin session' }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'Preparing sound' })).toBeVisible()
+    expect(await desktopFrame(page)).toEqual(frame)
+    expect(await page.locator('.field').boundingBox()).toEqual(field)
+  } finally {
+    release()
+  }
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  expect(await desktopFrame(page)).toEqual(frame)
+  expect(await page.locator('.field').boundingBox()).toEqual(field)
+})
+
 for (const width of [430, 1440]) for (const theme of ['light', 'dark']) test(`stimulus leaves every cell and marker center fixed (${width}px, ${theme})`, async ({ page }) => {
   await page.setViewportSize({ width, height: width === 430 ? 932 : 900 })
   await page.clock.install()
@@ -67,6 +157,12 @@ for (const [width, height] of [[667, 280], [568, 260], [320, 256]]) test(`a 6×6
     await expect(response).toBeInViewport({ ratio: 1 })
     await response.click()
     await expect(response.locator('small')).toHaveText(/Correct|False alarm/)
+    await expect(response.locator('small')).toBeInViewport({ ratio: 1 })
+  }
+  if (width === 320) {
+    const positionFeedback = (await page.getByRole('button', { name: /^Position/ }).locator('small').boundingBox())!
+    const audioButton = (await page.getByRole('button', { name: /^Audio/ }).boundingBox())!
+    expect(audioButton.y - (positionFeedback.y + positionFeedback.height)).toBeGreaterThanOrEqual(8)
   }
 })
 

@@ -9,7 +9,6 @@
 
 .app-shell[data-compact] {
   --gutter: 24px;
-  --compact-field-height: calc(100svh - 164px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   padding-inline: max(var(--gutter),env(safe-area-inset-left)) max(var(--gutter),env(safe-area-inset-right));
 }
 
@@ -34,6 +33,10 @@
 }
 
 [data-compact] .training {
+  --response-height: 56px;
+  --round-padding-top: max(12px,env(safe-area-inset-top));
+  --round-padding-bottom: max(14px,env(safe-area-inset-bottom));
+  --compact-field-height: calc(100svh - var(--round-padding-top) - var(--round-padding-bottom) - var(--toolbar-height) - 2 * var(--round-gap) - var(--controls-height));
   max-width: 600px;
   margin-inline: auto;
 }
@@ -58,7 +61,6 @@
 [data-compact] .answer-button {
   flex: 1;
   min-width: 0;
-  min-height: 56px;
 }
 
 [data-compact][data-round-active] .topbar,
@@ -72,7 +74,7 @@
 
 [data-compact][data-round-active] .training {
   min-height: 100svh;
-  padding-block: max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-bottom));
+  padding-block: var(--round-padding-top) var(--round-padding-bottom);
 }
 
 [data-compact][data-round-active] .game-region {
@@ -221,7 +223,7 @@
 
   [data-round-active] .answers {
     flex-direction: column;
-    gap: 20px;
+    gap: calc(var(--feedback-space) + 8px);
   }
 
   [data-round-active] .answer-button {
@@ -254,7 +256,7 @@
     justify-self: center;
     width: min(100%,132px);
     min-height: 64px;
-    margin-bottom: max(18px,9svh);
+    margin-bottom: max(var(--feedback-space),9svh);
   }
 
   [data-round-active] [data-channel=visual],

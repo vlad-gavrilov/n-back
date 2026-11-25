@@ -125,9 +125,16 @@ p {
 .app-shell {
   --topbar-height: clamp(64px,9svh,116px);
   --desktop-spacing: clamp(12px,10svh - 68px,56px);
+  --footer-padding: calc((var(--desktop-spacing) - 4px) / 2);
   max-width: 1400px;
   margin: auto;
   padding: 0 clamp(24px,4vw,56px);
+}
+
+.app-shell:not([data-compact]) {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100svh;
 }
 
 .topbar {
