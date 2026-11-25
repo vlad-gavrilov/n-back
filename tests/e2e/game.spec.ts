@@ -96,6 +96,33 @@ for (const locale of locales) for (const width of [320, 430, 744, 756, 1024, 144
     await page.locator('.theme-toggle').click()
   }
 })
+
+for (const locale of locales) {
+  for (const [width, height] of [[1716, 1026], [1440, 900], [1366, 768]]) {
+    test(`desktop start screen fits at ${width}×${height} (${locale})`, async ({ page }) => {
+      await page.setViewportSize({ width, height })
+      await page.addInitScript(value => localStorage.setItem('nback-locale', value), locale)
+      await page.goto('/')
+
+      const start = page.getByRole('button', { name: dictionaries[locale].begin, exact: true })
+      await start.waitFor()
+      const pageHeight = await page.evaluate(async () => {
+        await document.fonts.ready
+        return document.documentElement.scrollHeight
+      })
+
+      expect(pageHeight).toBeLessThanOrEqual(height)
+      await expect(start).toBeInViewport({ ratio: 1 })
+      await expect(page.getByRole('contentinfo')).toBeInViewport({ ratio: 1 })
+      if (height === 1026) {
+        const field = await page.locator('.field').boundingBox()
+        expect(field?.width).toBeCloseTo(390, 1)
+        expect(field?.height).toBeCloseTo(390, 1)
+      }
+    })
+  }
+}
+
 test('stop cancels the round and restart starts with a fresh countdown', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Begin session' }).click()

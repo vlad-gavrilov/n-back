@@ -1,3 +1,35 @@
+@media (min-width:901px) {
+  .app-shell {
+    --desktop-spacing: clamp(12px,10svh - 68px,56px);
+  }
+
+  .topbar {
+    height: clamp(64px,9svh,116px);
+  }
+
+  .workspace {
+    padding-block: var(--desktop-spacing);
+  }
+
+  .section-heading {
+    margin-bottom: min(38px,var(--desktop-spacing));
+  }
+
+  .settings fieldset,
+  .settings .select-label {
+    margin-bottom: min(28px,var(--desktop-spacing));
+  }
+
+  .field {
+    /* Grow from 280px at 800px tall to the desktop cap at 1020px. */
+    width: min(100%,max(280px,50svh - 120px));
+  }
+
+  footer {
+    padding-block: calc(var(--desktop-spacing) / 2);
+  }
+}
+
 @media (min-width:1100px) {
   .training {
     padding: 0 30px;
@@ -311,12 +343,7 @@ button:not(:disabled):active {
 /* Height adjustments layer over the earlier width and landscape layouts. */
 
 @media (min-width:901px) and (max-height:800px) {
-  .topbar {
-    height: 86px;
-  }
-
   .workspace {
-    padding: 28px 0;
     gap: 55px;
   }
 
@@ -355,10 +382,6 @@ button:not(:disabled):active {
   .settings-note {
     margin-top: 18px;
     padding-top: 14px;
-  }
-
-  .section-heading {
-    margin-bottom: 24px;
   }
 }
 
