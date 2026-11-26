@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures'
+import { expect, freezeClock, test, type Page } from './fixtures'
 import { dictionaries, localeNames, locales, type Locale } from '../../src/i18n'
 async function selectLocale(page: Page, locale: Locale) {
   await expect(page.locator('.topbar')).toBeVisible()
@@ -55,6 +55,37 @@ test('a two-second stimulus interval paces the whole round', async ({ page }) =>
   await expect(page.getByText('Trial 1 of 20', { exact: true })).toBeVisible()
   await page.clock.runFor(20 * 2000 + 1000)
   await expect(page.getByRole('heading', { name: 'Round complete' })).toBeVisible()
+})
+
+test('turning off live feedback confirms a Dual response neutrally and credits the hit', async ({ page }) => {
+  await freezeClock(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Dual', exact: true }).click()
+  await page.getByRole('checkbox', { name: /Live feedback/ }).uncheck()
+  await page.getByRole('button', { name: 'Begin session' }).click()
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+  const positions: number[] = []
+  let answered = false
+  const positionButton = page.getByRole('button', { name: /^Position/ })
+  for (let trial = 0; trial < 22; trial++) {
+    await page.clock.runFor(3000)
+    const position = await page.locator('.field-cell.lit').evaluate(cell =>
+      Array.from(cell.parentElement!.children).indexOf(cell),
+    )
+    if (!answered && position === positions[trial - 2]) {
+      await page.keyboard.press('f')
+      await expect(positionButton.locator('small')).toHaveText('Registered')
+      await expect(positionButton.locator('small')).toBeVisible()
+      await expect(positionButton).toHaveClass(/\bregistered\b/)
+      answered = true
+    }
+    positions.push(position)
+  }
+  expect(answered).toBe(true)
+  await page.clock.runFor(3000)
+  const stats = page.locator('.channel-stats').filter({ has: page.getByRole('heading', { name: 'Position' }) })
+  await expect(stats.getByText('Hits', { exact: true }).locator('+ dd')).toHaveText('1')
+  await expect(stats.getByText('False alarms', { exact: true }).locator('+ dd')).toHaveText('0')
 })
 test('dual sound failure is explicit and visual mode remains available', async ({ page }) => {
   await page.route('**/audio/*.wav*', route => route.abort())

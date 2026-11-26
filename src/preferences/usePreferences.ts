@@ -26,11 +26,12 @@ export function usePreferences() {
     document.documentElement.dataset.theme = theme
     const color = theme === 'light' ? '#F5F6F8' : '#151820'
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color)
-    writePreference('nback-theme', theme)
   }, [theme])
 
   function toggleTheme(): void {
-    setTheme(current => current === 'light' ? 'dark' : 'light')
+    const next = theme === 'light' ? 'dark' : 'light'
+    writePreference('nback-theme', next)
+    setTheme(next)
   }
   return { locale, setLocale, t, theme, toggleTheme }
 }

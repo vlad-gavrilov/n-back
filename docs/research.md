@@ -14,10 +14,10 @@ For each channel, the score is 100 × (hits / targets − false alarms / non-tar
 
 The next-level recommendation is +1 when errors (misses + false alarms) are at most two in every channel, −1 when errors are at least six in any channel, otherwise unchanged, bounded to 1–9. The user chooses whether to accept it. Aborted rounds receive no score or recommendation.
 
-Input and stimulus times are measured with a monotonic browser clock. Scheduled boundaries avoid cumulative interval drift. If a stimulus onset arrives more than 250 ms late, an entire stimulus was skipped, or the previous cue is still visible at the next trial boundary, the round is interrupted rather than replayed at accelerated speed.
+Input and stimulus times are measured with a monotonic browser clock. Scheduled boundaries avoid cumulative interval drift. The round ends without a score if any scheduled callback runs more than 250 ms late. This covers countdown ticks, stimulus onsets, cue clearing and round completion. The same limit applies to lateness against the nominal trial boundary. A cue still visible at the next boundary also interrupts the round.
 
 If delays in showing and clearing a cue combine, the next cue can start slightly later so the field stays blank for at least 250 ms. This is the shortest configured interval (1000 ms) minus the 500 ms cue and the 250 ms timing tolerance. The original onset schedule still determines whether the delay is acceptable and when later trials are due.
 
 The final response window ends one configured interval after the last stimulus actually appears, including when its onset was slightly delayed. Earlier response windows close at the next nominal onset. If the next stimulus is delayed, its response window opens when it appears.
 
-During an active round, keyboard and pointer responses use the input event's timestamp. If the browser delivers an event after the next trial has started, the original trial receives the response and reaction time. Feedback for the new trial stays available for its own responses. Scoring closes when the round ends.
+During an active round, keyboard and pointer responses use the input event's timestamp. A valid timestamp preserves the original trial and reaction time even if the event arrives during a later trial. A zero, negative, non-finite or future timestamp uses the current monotonic time, so the response counts in the window open at delivery. Feedback for a later trial stays available for its own responses. Scoring closes when the round ends.

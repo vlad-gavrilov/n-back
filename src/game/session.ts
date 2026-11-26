@@ -74,15 +74,16 @@ export class Session {
   start(): void {
     if (!this.cancelRound()) return
     this.trials = generateTrials(this.config, this.random)
+    const now = this.clock.now()
     const round: Round = {
       active: true,
-      firstTrialAt: this.clock.now() + COUNTDOWN_SECONDS * SECOND_MS,
+      firstTrialAt: now + COUNTDOWN_SECONDS * SECOND_MS,
       windows: [],
       responses: [],
     }
     this.round = round
     this.publish({ ...createIdleView(), phase: 'countdown' })
-    this.tick(round)
+    this.schedule(round, now + SECOND_MS)
   }
 
   respond(channel: Channel, occurredAt?: number): void {
@@ -110,6 +111,7 @@ export class Session {
     this.publish({ ...view, answered: { ...view.answered, [channel]: correct } })
   }
 
+  /** Silent teardown. Use interrupt('stopped') to publish a user-requested stop. */
   stop(): void {
     this.cancelRound()
   }
@@ -138,7 +140,7 @@ export class Session {
     if (this.cancelRound()) this.publish({ ...status, countdown, index, answered, cue: null })
   }
 
-  private tick(round: Round, now = this.clock.now()): void {
+  private tick(round: Round, now: number): void {
     if (this.round !== round) return
     const elapsed = now - round.firstTrialAt
     if (elapsed < 0) {

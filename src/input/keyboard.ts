@@ -7,7 +7,7 @@ const fallbackCodes: Record<string, string> = {
   ' ': 'Space', spacebar: 'Space',
 }
 const editable = 'input,select,textarea,[contenteditable]:not([contenteditable="false"]),[role="textbox"]'
-const interactive = 'button,a[href],summary,[role="button"],[role="link"]'
+const buttonControls = 'button,summary,[role="button"]'
 type Key = Pick<KeyboardEvent, 'code' | 'key'>
 
 function hasPhysicalCode(event: Key): boolean {
@@ -52,7 +52,7 @@ export function listenForResponseKeys(mode: SessionConfig['mode'], respond: (cha
       if (focusedChannel === 'visual' || focusedChannel === 'audio') respond(focusedChannel, inputTime(event))
       return
     }
-    if (activation && target?.closest(interactive)) return
+    if (activation && target?.closest(buttonControls)) return
     if (channel) {
       event.preventDefault()
       respond(channel, inputTime(event))

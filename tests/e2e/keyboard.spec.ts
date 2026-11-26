@@ -84,6 +84,21 @@ test('global Space answers on background but retains button actions', async ({ p
   await expect(page.locator('.interruption-card')).toBeVisible()
 })
 
+test('Visual Space answers on a focused link and Enter follows it', async ({ page }) => {
+  await freezeClock(page)
+  await page.goto('/')
+  const begin = page.getByRole('button', { name: 'Begin session', exact: true })
+  await begin.click()
+  await page.clock.runFor(9000)
+
+  const home = page.locator('a.wordmark')
+  await home.press('Space')
+  await expect(page.getByRole('button', { name: /^Position/ })).toContainText(/Correct|False alarm/)
+  await expect(home).toBeFocused()
+  await home.press('Enter')
+  await expect(begin).toBeVisible()
+})
+
 test('early Space keeps the Visual board in view and a held key does not answer the first trial', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 561 })
   await page.addInitScript(() => localStorage.setItem('nback-locale', 'ru'))

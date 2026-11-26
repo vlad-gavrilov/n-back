@@ -25,6 +25,15 @@ function showLateTrial(which: 'last' | 'penultimate') {
 }
 afterEach(() => vi.useRealTimers())
 describe('session timing', () => {
+  it('publishes each countdown number once before the first cue', () => {
+    const { session, advance, changed } = setup()
+    session.start()
+    advance(3000)
+    const countdowns = changed.mock.calls.map(([view]) => view).filter(view => view.phase === 'countdown')
+    expect(countdowns.map(view => view.countdown)).toEqual([3, 2, 1])
+    expect(session.view).toMatchObject({ phase: 'warmup', index: 0 })
+  })
+
   it('counts down, ignores warmup, blanks cues, accepts both channels once, completes the final window', () => {
     const { session: s, advance } = setup(); s.start(); s.respond('visual'); expect(s.view.phase).toBe('countdown')
     advance(3000); expect(s.view.phase).toBe('warmup'); s.respond('visual'); expect(s.view.answered).toEqual({})

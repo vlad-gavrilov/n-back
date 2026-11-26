@@ -36,6 +36,22 @@ describe('sequence contract', () => {
   it('rejects unsupported configuration', () => { expect(() => generateTrials({ ...config, n: 0 })).toThrow(); expect(() => generateTrials({ ...config, trialMs: 1234 })).toThrow(); expect(() => generateTrials({ ...config, trialMs: 1000 })).not.toThrow() })
 })
 describe('results', () => {
+  it('averages asymmetric Dual scores before applying the round floor', () => {
+    const oneBack = { ...config, n: 1 }
+    const trials = [
+      { position: 0, letter: 'B' }, { position: 0, letter: 'F' },
+      { position: 1, letter: 'F' }, { position: 2, letter: 'J' },
+    ]
+    const audioOnly = scoreRound(oneBack, trials, [{ trial: 2, channel: 'audio', reactionMs: 100 }])
+    expect(audioOnly).toMatchObject({ visual: { score: 0 }, audio: { score: 100 }, score: 50 })
+
+    const mixed = scoreRound(oneBack, trials, [
+      { trial: 1, channel: 'visual', reactionMs: 100 },
+      { trial: 3, channel: 'audio', reactionMs: 100 },
+    ])
+    expect(mixed).toMatchObject({ visual: { score: 100 }, audio: { score: -50 }, score: 25 })
+  })
+
   it('scores silence as zero, with no hit reaction time', () => {
     const result = scoreRound(config, generateTrials(config, seededRandom(2)), [])
     expect(result.score).toBe(0)
