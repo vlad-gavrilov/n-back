@@ -1,4 +1,4 @@
-import { test as base, type Page } from '@playwright/test'
+import { expect, test as base, type Page } from '@playwright/test'
 
 export async function freezeClock(page: Page) {
   const noon = new Date('2026-11-04T12:00:00Z')
@@ -9,7 +9,16 @@ export async function freezeClock(page: Page) {
 
 // Replace the output context so browser tests can exercise the player silently.
 export const test = base.extend({
-  page: async ({ page }, use) => {
+  page: async ({ page, baseURL }, use) => {
+    const origin = new URL(baseURL!).origin
+    const foreignResponses = new Set<string>()
+    page.on('response', response => {
+      const type = response.request().resourceType()
+      if (response.ok() && (type === 'document' || type === 'script') && new URL(response.url()).origin === origin &&
+        response.headers()['x-nback-preview'] !== process.env.NBACK_E2E_RUN_ID) {
+        foreignResponses.add(response.url())
+      }
+    })
     await page.addInitScript(() => {
       class SilentAudioContext {
         state = 'running'
@@ -43,6 +52,7 @@ export const test = base.extend({
       Object.defineProperty(window, 'webkitAudioContext', { value: SilentAudioContext, configurable: true, writable: true })
     })
     await use(page)
+    expect([...foreignResponses], 'Application files served by another preview').toEqual([])
   },
 })
 

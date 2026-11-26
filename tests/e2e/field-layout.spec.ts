@@ -116,7 +116,7 @@ test('preparing sound uses the same desktop frame as the countdown', async ({ pa
 
 for (const width of [430, 1440]) for (const theme of ['light', 'dark']) test(`stimulus leaves every cell and marker center fixed (${width}px, ${theme})`, async ({ page }) => {
   await page.setViewportSize({ width, height: width === 430 ? 932 : 900 })
-  await page.clock.install()
+  await freezeClock(page)
   await page.goto('/')
   if (await page.locator('html').getAttribute('data-theme') !== theme) await page.locator('.theme-toggle').click()
   for (const size of [2, 3, 4, 5, 6]) {

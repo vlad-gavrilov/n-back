@@ -8,7 +8,7 @@ permissions:
   contents: read
 concurrency:
   group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -19,10 +19,23 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - run: python3 -B -m unittest discover -s scripts
+      - run: python3 scripts/generate-audio.py --check
       - run: npm run check
+      - name: Verify published dependency notices
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          sections = Path("dist/licenses/dependencies.md").read_text().split("\n## ")
+          for package in ("react", "react-dom", "scheduler"):
+              license_text = (Path("node_modules") / package / "LICENSE").read_text().strip()
+              if not any(section.startswith(f"{package} - ") and license_text in section for section in sections):
+                  raise SystemExit(f"Missing {package} license in dist")
+          PY
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:e2e
       - uses: actions/upload-pages-artifact@v5
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
           path: dist
   deploy:
