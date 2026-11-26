@@ -5,7 +5,7 @@ import { createIdleView, isSessionActive, Session, type InterruptionReason, type
 type AudioRequest = { purpose: 'test' } | { purpose: 'session'; n: number }
 export type AudioState =
   | { phase: 'idle' }
-  | { phase: 'success'; purpose: 'test' }
+  | { phase: 'playing' | 'success'; purpose: 'test' }
   | ({ phase: 'loading' } & AudioRequest)
   | ({ phase: 'error'; code: AudioErrorCode } & AudioRequest)
 
@@ -49,8 +49,9 @@ export class TrainingController {
     if (sameConfig(this.state.config, config)) return
     assertSupportedConfig(config)
     this.cancelPreparation()
-    if (this.session) this.session.stop()
-    else this.player.stop()
+    this.session?.stop()
+    if (this.state.config.mode === 'dual' && config.mode === 'visual') this.player.dispose()
+    else if (!this.session) this.player.stop()
     this.session = undefined
     this.update({ config: { ...config }, view: createIdleView(), audio: idleAudio })
   }
@@ -79,6 +80,7 @@ export class TrainingController {
   }
 
   private async prepare(request: AudioRequest): Promise<void> {
+    if (this.state.audio.phase === 'playing') this.player.stop()
     const pending = new AbortController()
     this.preparation = pending
     this.update({ audio: { ...request, phase: 'loading' } })
@@ -88,10 +90,12 @@ export class TrainingController {
       if (request.purpose === 'session') {
         this.beginSession({ ...this.state.config, n: request.n })
       } else {
-        this.player.stop()
-        this.player.play('B')
-        // Starting a sample can synchronously report an interruption.
-        if (!pending.signal.aborted) this.update({ audio: { purpose: 'test', phase: 'success' } })
+        const playing = { purpose: 'test', phase: 'playing' } as const
+        this.update({ audio: playing })
+        if (this.state.audio !== playing) return
+        this.player.play('B', () => {
+          if (this.state.audio === playing) this.update({ audio: { purpose: 'test', phase: 'success' } })
+        })
       }
     } catch (error) {
       if (!pending.signal.aborted) {
@@ -129,7 +133,9 @@ export class TrainingController {
       return
     }
     this.player.stop()
-    if (audio.phase === 'loading' && reason === 'audio') {
+    if (audio.phase === 'playing') {
+      this.update({ audio: { purpose: 'test', phase: 'error', code: reason === 'audio' ? 'blocked' : 'interrupted' } })
+    } else if (audio.phase === 'loading' && reason === 'audio') {
       this.update({ audio: { ...audio, phase: 'error', code: 'blocked' } })
     } else if (audio.phase === 'loading' || audio.phase === 'success') {
       this.update({ audio: idleAudio })

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from './fixtures'
+import { expect, freezeClock, test, type Page } from './fixtures'
 import { tabToNextControl } from './keyboard-navigation'
 import { dictionaries, localeNames, locales } from '../../src/i18n'
 
@@ -11,16 +11,24 @@ async function dualSettings(page: Page) {
 }
 
 test('sound test error and retry stay inside mobile settings', async ({ page }) => {
+  await freezeClock(page)
   await page.route('**/audio/*.wav*', route => route.fulfill({ status: 503, body: 'Unavailable' }))
   const dialog = await dualSettings(page)
   await dialog.getByRole('button', { name: 'Test sound', exact: true }).click()
   await expect(dialog.getByRole('alert')).toContainText('Sounds could not be loaded')
   await expect(page.getByRole('alert')).toHaveCount(1)
   await page.unrouteAll()
-  await dialog.getByRole('button', { name: 'Test sound', exact: true }).click()
-  await expect(dialog.getByRole('status').filter({ hasText: /Preparing test sound|Test sound played/ })).toContainText('Test sound played')
+  await dialog.getByRole('alert').getByRole('button', { name: 'Try again', exact: true }).click()
+  await expect.poll(() => page.evaluate(() =>
+    (window as unknown as { __testAudioContext: { startedSamples: number } }).__testAudioContext.startedSamples,
+  )).toBe(1)
+  await expect(dialog.getByText('Test sound played.', { exact: true })).toHaveCount(0)
+  await page.clock.runFor(100)
+  await expect(dialog.getByRole('status').filter({ hasText: 'Test sound played.' })).toBeVisible()
+  await expect(dialog).toBeVisible()
   await expect(page.getByRole('alert')).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'Get ready', exact: true })).toHaveCount(0)
+  await expect(page.locator('.countdown')).toHaveCount(0)
+  await expect(page.locator('.start-row')).toHaveCount(1)
 })
 
 test('pending sound test moves to main screen when settings close', async ({ page }) => {

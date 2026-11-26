@@ -13,6 +13,8 @@ export function AudioFeedback({ audio, t, onRetry, onUseVisual }: AudioFeedbackP
     case 'idle': return null
     case 'loading':
       return <p className="audio-feedback" role="status">{audio.purpose === 'test' ? t.soundTestPreparing : t.preparing}</p>
+    case 'playing':
+      return <p className="audio-feedback" role="status">{t.soundTestPlaying}</p>
     case 'success':
       return <p className="audio-feedback" role="status">{t.soundTestPlayed}</p>
     case 'error':

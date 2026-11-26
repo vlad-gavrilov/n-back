@@ -72,9 +72,7 @@ Automated browser tests do not replace testing on physical phones and tablets. V
 
 ## Assets
 
-Manrope is bundled by `@fontsource/manrope` under its included OFL license. Letter WAV files are generated using the macOS Samantha English (US) voice and explicit letter names, without a spoken “Capital” prefix. They are not copied from another N-back site. Each file is mono 16-bit PCM at 22050 Hz.
-
-To regenerate on macOS with Samantha installed, run `python3 scripts/generate-audio.py`. Run `python3 scripts/generate-audio.py --check` to validate the existing files without synthesis. The script uses only the Python standard library and macOS tools; ordinary builds use the bundled WAVs on any supported build platform. After changing recordings, update the audio-set version in the loader URL to invalidate old browser caches. Listen to each file as well: waveform checks do not verify pronunciation.
+See [Assets and licenses](docs/assets.md) for notices and audio regeneration instructions.
 
 ## Interface languages
 

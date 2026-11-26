@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { DEFAULT_CONFIG, LETTERS } from '../game/config'
+import { generateTrials, seededRandom } from '../game/sequence'
 import { TrainingController } from '../training/controller'
 import { AudioPlayer } from './player'
 
@@ -10,7 +11,7 @@ function deferred<T>() {
 }
 
 class SilentSource {
-  buffer: object | null = null
+  buffer: { file?: string } | null = null
   onended: (() => void) | null = null
   connect = vi.fn()
   disconnect = vi.fn()
@@ -43,6 +44,7 @@ function stubAudio(initialState: AudioContextState = 'running') {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   vi.useRealTimers()
 })
@@ -72,7 +74,9 @@ it('resumes immediately, loads the versioned letter set once and plays a cached 
   const ready = player.prepare()
   expect(resume).toHaveBeenCalledOnce()
   await ready
-  expect(load.mock.calls.map(([url]) => String(url))).toEqual(LETTERS.map(letter => `/audio/${letter}.wav?v=letters-v2`))
+  expect(load.mock.calls.map(([url]) => String(url))).toEqual(
+    LETTERS.map(letter => `${import.meta.env.BASE_URL}audio/${letter}.wav?v=letters-v3`),
+  )
   await player.prepare()
   expect(load).toHaveBeenCalledTimes(LETTERS.length)
   expect(decode).toHaveBeenCalledTimes(LETTERS.length)
@@ -80,20 +84,99 @@ it('resumes immediately, loads the versioned letter set once and plays a cached 
   expect(createSource.mock.results[0].value.start).toHaveBeenCalledOnce()
 })
 
-it('stops the previous sound test source before starting the replay', async () => {
+it('starts the matching decoded recording on every trial and scores the matches heard in a seeded Dual round', async () => {
+  vi.useFakeTimers()
+  const { load, decode, createSource } = stubAudio()
+  load.mockImplementation(async url => new Response(new URL(String(url), 'https://training.test').pathname))
+  decode.mockImplementation(async bytes => ({ file: new TextDecoder().decode(bytes) }))
+  const heard: (string | undefined)[] = []
+  createSource.mockImplementation(() => {
+    const source = new SilentSource()
+    source.start.mockImplementation(() => { heard.push(source.buffer?.file) })
+    return source
+  })
+
+  const config = { ...DEFAULT_CONFIG, mode: 'dual', trialMs: 1000 } as const
+  const expected = generateTrials(config, seededRandom(42)).map(trial =>
+    `${import.meta.env.BASE_URL}audio/${trial.letter}.wav`,
+  )
+  vi.spyOn(Math, 'random').mockImplementation(seededRandom(42))
+  const trainer = new TrainingController()
+  trainer.configure(config)
+  await trainer.start()
+  vi.advanceTimersByTime(3000)
+  for (let index = 0; index < expected.length; index++) {
+    expect(heard).toHaveLength(index + 1)
+    if (index >= config.n && heard[index] === heard[index - config.n]) trainer.respond('audio')
+    vi.advanceTimersByTime(config.trialMs)
+  }
+  expect(heard).toEqual(expected)
+  expect(trainer.getSnapshot().view.result?.audio).toMatchObject({ hits: 6, misses: 0, falseAlarms: 0, score: 100 })
+  trainer.dispose()
+})
+
+it('stops a superseded sound test and reports success when the replay ends naturally', async () => {
   const { createSource } = stubAudio()
   const trainer = new TrainingController()
   trainer.configure({ ...DEFAULT_CONFIG, mode: 'dual' })
   await trainer.testSound()
+  const previous = createSource.mock.results[0].value
+  const oldEnded = previous.onended
   await trainer.testSound()
 
-  const [previous, replay] = createSource.mock.results.map(result => result.value)
+  const replay = createSource.mock.results[1].value
   expect(previous.start).toHaveBeenCalledOnce()
   expect(previous.stop).toHaveBeenCalledOnce()
   expect(previous.disconnect).toHaveBeenCalledOnce()
   expect(previous.stop.mock.invocationCallOrder[0]).toBeLessThan(replay.start.mock.invocationCallOrder[0])
   expect(replay.stop).not.toHaveBeenCalled()
+  oldEnded?.()
+  expect(trainer.getSnapshot().audio.phase).toBe('playing')
+  replay.onended?.()
   expect(trainer.getSnapshot().audio).toEqual({ phase: 'success', purpose: 'test' })
+  trainer.dispose()
+})
+
+it.each(['audio', 'hidden', 'orientation'] as const)('offers a retry when %s interrupts the sample before it finishes', async reason => {
+  const { contexts, createSource } = stubAudio()
+  const trainer = new TrainingController()
+  trainer.configure({ ...DEFAULT_CONFIG, mode: 'dual' })
+  await trainer.testSound()
+  const sample = createSource.mock.results[0].value
+  const oldEnded = sample.onended
+  if (reason === 'audio') {
+    contexts[0].state = 'suspended'
+    contexts[0].onstatechange?.()
+  } else {
+    trainer.interrupt(reason)
+  }
+  oldEnded?.()
+  expect(sample.stop).toHaveBeenCalledOnce()
+  expect(trainer.getSnapshot().audio).toMatchObject({ phase: 'error', purpose: 'test' })
+
+  contexts[0].state = 'running'
+  await trainer.retry()
+  expect(trainer.getSnapshot().audio.phase).toBe('playing')
+  createSource.mock.results[1].value.onended?.()
+  expect(trainer.getSnapshot()).toMatchObject({ audio: { phase: 'success' }, view: { phase: 'idle' } })
+  trainer.dispose()
+})
+
+it('closes the context when a failed Dual start switches to Visual and loads fresh buffers on returning to Dual', async () => {
+  const { contexts, load } = stubAudio()
+  load.mockRejectedValueOnce(new Error('Failed to load'))
+  const trainer = new TrainingController()
+  const dual = { ...DEFAULT_CONFIG, mode: 'dual' } as const
+  trainer.configure(dual)
+  await trainer.start()
+  expect(trainer.getSnapshot().audio.phase).toBe('error')
+  trainer.configure(DEFAULT_CONFIG)
+  expect(contexts[0].close).toHaveBeenCalledOnce()
+  trainer.configure(dual)
+  await trainer.start()
+  expect(contexts).toHaveLength(2)
+  expect(load).toHaveBeenCalledTimes(LETTERS.length * 2)
+  expect(trainer.getSnapshot().view.phase).toBe('countdown')
   trainer.dispose()
 })
 

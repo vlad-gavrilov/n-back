@@ -22,17 +22,32 @@ for (const [width, height] of [[320, 850], [430, 932], [932, 430]]) test(`mobile
   await expect(page.locator('html')).toHaveAttribute('lang', 'en')
 })
 test('English default, RU persistence, metadata, Cyrillic fonts and research', async ({ page }) => {
-  const fonts: string[] = []; page.on('request', request => { if (request.url().includes('cyrillic')) fonts.push(request.url()) })
+  const cyrillicFont = page.waitForResponse(response =>
+    response.request().resourceType() === 'font' && /manrope-cyrillic-400-.*\.woff2?$/.test(response.url()),
+  )
   await page.goto('/'); await expect(page.locator('html')).toHaveAttribute('lang', 'en')
   await page.getByRole('button', { name: 'Русский', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('lang', 'ru'); await expect(page).toHaveTitle('N-back — тренировка рабочей памяти')
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Визуальный/)
+  expect((await cyrillicFont).ok()).toBe(true)
+  const loadedFaces = await page.evaluate(async () => {
+    const faces = await document.fonts.load('400 16px Manrope', 'Язык')
+    return faces.map(face => ({ family: face.family, status: face.status }))
+  })
+  expect(loadedFaces).toContainEqual({ family: 'Manrope', status: 'loaded' })
   await page.reload(); await expect(page.getByRole('button', { name: 'Русский', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  await page.evaluate(() => document.fonts.ready); expect(fonts.length).toBeGreaterThan(0)
+  const credits = page.getByRole('contentinfo').getByRole('link', { name: 'Озвучка Robotnick2' })
+  await expect(credits).toBeVisible()
+  const noticeURL = new URL('licenses/robotnick2-CC-BY-SA.txt', page.url()).href
+  await expect(credits).toHaveJSProperty('href', noticeURL)
+  const notice = await page.request.get(noticeURL)
+  expect(notice.ok()).toBe(true)
+  expect(await notice.text()).toContain('https://creativecommons.org/licenses/by-sa/3.0/')
   await page.getByRole('button', { name: 'Исследования', exact: true }).click()
   await expect(page.getByRole('link', { name: /Jaeggi/ })).toContainText('Улучшение подвижного интеллекта')
   await page.getByRole('button', { name: 'Закрыть окно' }).click()
   await page.getByRole('button', { name: 'English', exact: true }).click(); await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Voice by Robotnick2' })).toBeVisible()
 })
 test('language changes preserve tutorial step, settings and round results', async ({ page }) => {
   await page.clock.install(); await page.goto('/')

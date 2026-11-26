@@ -14,6 +14,7 @@ export const test = base.extend({
       class SilentAudioContext {
         state = 'running'
         destination = {}
+        startedSamples = 0
         onstatechange: (() => void) | null = null
         constructor() {
           Object.defineProperty(window, '__testAudioContext', { value: this, configurable: true })
@@ -21,9 +22,21 @@ export const test = base.extend({
         async resume() { this.state = 'running' }
         async suspend() { this.state = 'suspended'; this.onstatechange?.() }
         async close() { this.state = 'closed'; this.onstatechange?.() }
-        async decodeAudioData() { return {} }
+        async decodeAudioData() { return { duration: 0.1 } }
         createBufferSource() {
-          return { buffer: null, onended: null, connect() {}, disconnect() {}, start() {}, stop() {} }
+          let timer: number | undefined
+          const source = {
+            buffer: null as { duration: number } | null,
+            onended: null as (() => void) | null,
+            connect() {}, disconnect() {},
+            start: () => {
+              if (!source.buffer) throw new Error('Missing sample')
+              this.startedSamples++
+              timer = window.setTimeout(() => source.onended?.(), source.buffer.duration * 1000)
+            },
+            stop() { window.clearTimeout(timer) },
+          }
+          return source
         }
       }
       Object.defineProperty(window, 'AudioContext', { value: SilentAudioContext, configurable: true, writable: true })

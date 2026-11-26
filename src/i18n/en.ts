@@ -36,6 +36,7 @@ export const en = {
   smallSteps: 'One small step at a time.',
 
   soundTestPreparing: 'Preparing test sound…',
+  soundTestPlaying: 'Playing test sound…',
   soundTestPlayed: 'Test sound played.',
   retrySound: 'Try again',
   roundInterrupted: 'Round interrupted',
@@ -86,6 +87,7 @@ export const en = {
 
   footer: 'Make room for a little focus.',
   research: 'Research',
+  voiceCredit: 'Voice by Robotnick2',
   byAuthor: 'By Vlad Gavrilov',
   helpTitle: 'One rule. A moving memory.',
   researchTitle: 'The research',
@@ -119,6 +121,7 @@ export const en = {
     timeout: 'Sound loading timed out. Try again or choose Visual mode.',
     load: 'Sounds could not be loaded. Check your connection and try again.',
     blocked: 'Sound is blocked. Enable audio in your browser and try again.',
+    interrupted: 'The test sound was interrupted. Try again.',
     unknown: 'Audio could not start. Check your volume and browser audio permissions, then try again.',
   },
 

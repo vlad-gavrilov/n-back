@@ -47,7 +47,8 @@ export function TrainingPanel({ state, controller, headingRef, openSettings, fee
       return <RoundResult config={config} result={view.result} busy={busy} onStart={controller.start} onAdjust={openSettings} t={t} />
     }
     if (view.phase === 'interrupted') {
-      return <InterruptionCard reason={view.reason} headingRef={interruptionHeading} busy={busy} onStart={controller.start} t={t} />
+      return <InterruptionCard reason={view.reason} headingRef={interruptionHeading} busy={busy}
+        preparingSession={preparingSession} onStart={controller.start} t={t} />
     }
     return (
       <GameBoard config={config} view={view} boardRef={board} onAnswer={controller.respond} t={t}>

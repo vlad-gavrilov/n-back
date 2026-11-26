@@ -67,18 +67,19 @@ interface InterruptionCardProps {
   reason: InterruptionReason
   headingRef: RefObject<HTMLHeadingElement | null>
   busy: boolean
+  preparingSession: boolean
   onStart: () => void
   t: Messages
 }
 
-export function InterruptionCard({ reason, headingRef, busy, onStart, t }: InterruptionCardProps) {
+export function InterruptionCard({ reason, headingRef, busy, preparingSession, onStart, t }: InterruptionCardProps) {
   return (
     <section className="interruption-card" aria-labelledby="interruption-title">
       <span aria-hidden="true">↺</span>
       <h2 id="interruption-title" ref={headingRef} tabIndex={-1}>{t.roundInterrupted}</h2>
       <p>{t.reason[reason]}</p>
       <p className="interruption-score">{t.notScored}</p>
-      <button className="primary-button" disabled={busy} onClick={() => onStart()}>{busy ? t.preparing : t.startFresh}</button>
+      <button className="primary-button" disabled={busy} onClick={() => onStart()}>{preparingSession ? t.preparing : t.startFresh}</button>
     </section>
   )
 }

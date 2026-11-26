@@ -15,7 +15,7 @@ function setup() {
   vi.useFakeTimers()
   const player = {
     prepare: vi.fn<(signal?: AbortSignal) => Promise<void>>().mockResolvedValue(undefined),
-    play: vi.fn(),
+    play: vi.fn<(letter: string, onEnded?: () => void) => void>(),
     stop: vi.fn(),
     dispose: vi.fn(),
     onInterrupted: () => {},
@@ -53,10 +53,11 @@ it('ignores an error from a hidden page after a newer sound test succeeds', asyn
   const previous = trainer.testSound()
   trainer.interrupt('hidden')
   await trainer.testSound()
+  player.play.mock.lastCall?.[1]?.()
   slow.reject(new Error('Old fetch failed'))
   await previous
   expect(trainer.getSnapshot()).toMatchObject({ audio: { phase: 'success', purpose: 'test' }, view: { phase: 'idle' } })
-  expect(player.play.mock.calls).toEqual([['B']])
+  expect(player.play).toHaveBeenCalledExactlyOnceWith('B', expect.any(Function))
 })
 
 it('lets the user retry a sound test interrupted as the sample starts', async () => {
@@ -65,6 +66,7 @@ it('lets the user retry a sound test interrupted as the sample starts', async ()
   await trainer.testSound()
   expect(trainer.getSnapshot().audio).toMatchObject({ phase: 'error', purpose: 'test', code: 'blocked' })
   await trainer.retry()
+  player.play.mock.lastCall?.[1]?.()
   expect(trainer.getSnapshot()).toMatchObject({ audio: { phase: 'success' }, view: { phase: 'idle' } })
 })
 

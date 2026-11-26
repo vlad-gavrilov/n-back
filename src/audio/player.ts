@@ -1,6 +1,6 @@
 import { LETTERS } from '../game/config'
 
-export type AudioErrorCode = 'timeout' | 'load' | 'blocked' | 'unknown'
+export type AudioErrorCode = 'timeout' | 'load' | 'blocked' | 'interrupted' | 'unknown'
 
 export class AudioPreparationError extends Error {
   constructor(readonly code: AudioErrorCode, options?: ErrorOptions) {
@@ -72,7 +72,7 @@ export class AudioPlayer {
 
   private async loadLetter(context: AudioContext, letter: string, signal: AbortSignal) {
     if (this.buffers.has(letter)) return
-    const response = await fetch(`${import.meta.env.BASE_URL}audio/${letter}.wav?v=letters-v2`, { signal })
+    const response = await fetch(`${import.meta.env.BASE_URL}audio/${letter}.wav?v=letters-v3`, { signal })
     signal.throwIfAborted()
     if (!response.ok) throw new Error(`HTTP ${response.status} loading ${letter}`)
     const data = await response.arrayBuffer()
@@ -82,7 +82,7 @@ export class AudioPlayer {
     this.buffers.set(letter, buffer)
   }
 
-  play(letter: string): void {
+  play(letter: string, onEnded?: () => void): void {
     const context = this.context
     const buffer = this.buffers.get(letter)
     if (!context || context.state !== 'running' || !buffer) {
@@ -96,7 +96,7 @@ export class AudioPlayer {
       this.sources.add(source)
       source.buffer = buffer
       source.connect(context.destination)
-      source.onended = this.releaseSource.bind(this, source)
+      source.onended = this.releaseSource.bind(this, source, onEnded)
       source.start()
     } catch {
       if (source) this.releaseSource(source)
@@ -104,16 +104,17 @@ export class AudioPlayer {
     }
   }
 
-  private releaseSource(source: AudioBufferSourceNode) {
+  private releaseSource(source: AudioBufferSourceNode, onEnded?: () => void) {
     if (!this.sources.delete(source)) return
     source.onended = null
     source.disconnect()
+    onEnded?.()
   }
 
   stop(): void {
     for (const source of this.sources) {
       this.releaseSource(source)
-      try { source.stop() } catch { /* The source has already stopped. */ }
+      try { source.stop() } catch { /* Continue cleaning up the remaining sources. */ }
     }
   }
 

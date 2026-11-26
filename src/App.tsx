@@ -68,6 +68,7 @@ export default function App() {
         <button disabled={locked} onClick={event => openDialog('research', event.currentTarget)}>
           {t.research} <span aria-hidden="true">↗</span>
         </button>
+        <a href={`${import.meta.env.BASE_URL}licenses/robotnick2-CC-BY-SA.txt`}>{t.voiceCredit}</a>
         <a href="https://vlad-gavrilov.dev/">{t.byAuthor}</a>
       </footer>
       {dialog && (

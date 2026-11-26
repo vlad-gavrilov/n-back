@@ -2,7 +2,7 @@ import { expect, freezeClock, test, type Page } from './fixtures'
 import { tabToNextControl } from './keyboard-navigation'
 
 type TestAudioWindow = {
-  __testAudioContext: AudioContext
+  __testAudioContext: AudioContext & { startedSamples: number }
   __releaseAudioResume?: () => void
 }
 
@@ -129,13 +129,7 @@ test('retrying a failed mobile Dual session closes settings before preparation a
   } finally { release() }
 })
 
-test('completed Dual results stay locked while Continue prepares sound and then focus the countdown', async ({ page }) => {
-  await startRound(page, 'dual')
-  await page.clock.runFor(60000)
-  await expect(page.getByRole('heading', { name: 'Round complete', exact: true })).toBeVisible()
-  const actions = page.locator('.result-actions')
-  const adjust = actions.getByRole('button', { name: 'Adjust session', exact: true })
-  await expect(actions.getByRole('button', { name: /^Repeat / })).toBeVisible()
+async function delayResume(page: Page) {
   await page.evaluate(() => {
     const testWindow = window as unknown as TestAudioWindow
     const context = testWindow.__testAudioContext
@@ -145,17 +139,48 @@ test('completed Dual results stay locked while Continue prepares sound and then 
       await resume()
     }
   })
+}
+
+async function releaseResume(page: Page) {
+  await page.evaluate(() => { (window as unknown as TestAudioWindow).__releaseAudioResume?.() })
+}
+
+test('Start fresh changes its label only while preparing a new round', async ({ page }) => {
+  await startRound(page, 'dual')
+  await page.getByRole('button', { name: 'Stop round' }).click()
+  const restart = page.locator('.interruption-card button')
+  await delayResume(page)
+  await page.getByRole('button', { name: 'Test sound', exact: true }).click()
+  await expect(restart).toBeDisabled()
+  await expect(restart).toHaveText('Start fresh')
+  await releaseResume(page)
+  await expect(restart).toBeEnabled()
+  await restart.click()
+  await expect(restart).toBeDisabled()
+  await expect(restart).toHaveText('Preparing sound…')
+  await releaseResume(page)
+  await expect(page.getByRole('heading', { name: 'Get ready' })).toBeVisible()
+})
+
+test('completed Dual results stay locked while Continue prepares sound and then focus the countdown', async ({ page }) => {
+  await startRound(page, 'dual')
+  await page.clock.runFor(60000)
+  await expect(page.getByRole('heading', { name: 'Round complete', exact: true })).toBeVisible()
+  const actions = page.locator('.result-actions')
+  const adjust = actions.getByRole('button', { name: 'Adjust session', exact: true })
+  await expect(actions.getByRole('button', { name: /^Repeat / })).toBeVisible()
+  await delayResume(page)
   try {
     await actions.getByRole('button', { name: /Continue at/ }).click()
     await expect(page.getByRole('status').filter({ hasText: 'Preparing sound' })).toBeVisible()
     for (const button of await actions.getByRole('button').all()) await expect(button).toBeDisabled()
     await adjust.evaluate(button => (button as HTMLButtonElement).click())
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await page.evaluate(() => { (window as unknown as TestAudioWindow).__releaseAudioResume?.() })
+    await releaseResume(page)
     await expect(page.getByRole('heading', { name: 'Get ready', exact: true })).toBeVisible()
     await expect(page.locator('.game-region')).toBeFocused()
   } finally {
-    await page.evaluate(() => { (window as unknown as TestAudioWindow).__releaseAudioResume?.() })
+    await releaseResume(page)
   }
 })
 
@@ -212,17 +237,24 @@ test('queued key and touch answers count for the trial during which they were pr
   }
 })
 
-for (const phase of ['countdown', 'running']) test(`suspending a prepared Dual context does not interrupt a Visual ${phase}`, async ({ page }) => {
+for (const phase of ['countdown', 'running']) test(`a queued event from the closed Dual context does not interrupt a Visual ${phase}`, async ({ page }) => {
   await freezeClock(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'Dual', exact: true }).click()
   await page.getByRole('button', { name: 'Test sound', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => (window as unknown as TestAudioWindow).__testAudioContext.startedSamples)).toBe(1)
+  await page.clock.runFor(100)
   await expect(page.getByRole('status').filter({ hasText: 'Test sound played' })).toBeVisible()
+  const staleEvent = await page.evaluateHandle(() => {
+    const context = (window as unknown as TestAudioWindow).__testAudioContext
+    return context.onstatechange!.bind(context)
+  })
   await page.getByRole('button', { name: 'Visual', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => (window as unknown as TestAudioWindow).__testAudioContext.state)).toBe('closed')
   await page.getByRole('button', { name: 'Begin session', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Get ready', exact: true })).toBeVisible()
   if (phase === 'running') await page.clock.runFor(9000)
-  await page.evaluate(async () => { await (window as unknown as TestAudioWindow).__testAudioContext.suspend() })
+  await staleEvent.evaluate(notify => notify(new Event('statechange')))
   await expect(page.locator('.interruption-card')).toHaveCount(0)
   if (phase === 'countdown') {
     await expect(page.getByRole('heading', { name: 'Get ready', exact: true })).toBeVisible()
