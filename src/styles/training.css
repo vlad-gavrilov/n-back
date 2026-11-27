@@ -66,7 +66,7 @@ h1 {
 
 .round-stop.secondary-button {
   flex: none;
-  min-width: 64px;
+  min-width: 44px;
   min-height: 44px;
   padding: 8px 14px;
 }
@@ -207,9 +207,7 @@ h1 {
 
 .answers {
   display: flex;
-  justify-content: center;
   gap: 12px;
-  max-width: 100%;
 }
 
 .answers,
@@ -225,10 +223,11 @@ h1 {
 .answer-button {
   position: relative;
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-width: 122px;
+  min-width: 0;
   min-height: var(--response-height);
   padding: 6px 14px;
   border: 1px solid var(--line);
@@ -332,15 +331,6 @@ kbd {
 @media (any-pointer:coarse) {
   .training {
     --response-height: 56px;
-  }
-
-  .answers {
-    width: min(100%,438px);
-  }
-
-  .answer-button {
-    flex: 1;
-    min-width: 0;
   }
 }
 

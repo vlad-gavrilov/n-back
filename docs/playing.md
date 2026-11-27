@@ -4,7 +4,7 @@
 
 Choose Visual to match positions or Dual to match both positions and spoken letters. Set N from 1 to 9, choose a field from 2×2 to 6×6 and pick a trial interval from 1 to 6 seconds. With live feedback off, the game confirms each response with **Registered** and shows the score at the end. For the scoring formula and how the game recommends the next level, see [Exercise parameters and research](research.md).
 
-On desktop, settings sit to the left of the field. Open **Session settings** beside the heading on screens up to 864 px wide or in landscape windows up to 560 px tall. During a round, progress and **Stop** appear above the field. Response buttons become available after warm-up. They sit below the field in portrait and on either side when a short landscape window has enough room.
+On desktop, settings sit to the left of the field. Open **Session settings** beside the heading on screens up to 864 px wide or in landscape windows up to 560 px tall. During a round, progress and **Stop** share the row above the field. After warm-up, **Position** spans the width of the field in Visual mode. In Dual mode, **Position** and **Audio** share the row equally. In landscape windows 350 px tall or shorter, the response buttons move beside the field so you can play without scrolling.
 
 ## Keyboard and touch
 

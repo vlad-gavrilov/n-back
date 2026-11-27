@@ -170,7 +170,7 @@ for (const layout of [
   { width: 1366, height: 768, compact: false, minFrameSide: 500, flank: false },
   { width: 768, height: 1024, compact: true, minFrameSide: 550, flank: false },
   { width: 375, height: 667, compact: true, minFrameSide: 330, flank: false },
-  { width: 844, height: 390, compact: true, minFrameSide: 300, flank: true },
+  { width: 844, height: 390, compact: true, minFrameSide: 230, flank: false },
   { width: 480, height: 190, compact: true, minFrameSide: 110, flank: true },
 ]) test(`round controls and field fit without scrolling at ${layout.width}×${layout.height}`, async ({ page }) => {
   const { width, height, compact, minFrameSide, flank } = layout
@@ -212,10 +212,59 @@ for (const layout of [
     expect(first.x + first.width).toBeLessThan(initial.x)
     expect(second.x).toBeGreaterThan(initial.x + initial.width)
   } else {
+    const info = (await page.locator('.training-heading > div').boundingBox())!
+    const stopBox = (await stop.boundingBox())!
+    expect(info.x).toBeCloseTo(initial.x, 0)
+    expect(info.width).toBeCloseTo(2 * stopBox.width, 0)
+    expect(stopBox.x + stopBox.width).toBeCloseTo(initial.x + initial.width, 0)
+    expect(first.x).toBeCloseTo(initial.x, 0)
+    expect(second.x + second.width).toBeCloseTo(initial.x + initial.width, 0)
+    expect(first.width).toBeCloseTo(second.width, 0)
     expect(first.y).toBeGreaterThanOrEqual(initial.y + initial.height)
     expect(second.y).toBeCloseTo(first.y, 1)
     expect(first.x + first.width).toBeLessThan(second.x)
   }
+})
+
+for (const [width, height] of [[1440, 900], [375, 667], [844, 390]]) test(`the single response spans the field at ${width}×${height}`, async ({ page }) => {
+  await page.setViewportSize({ width, height })
+  await page.addInitScript(() => localStorage.setItem('nback-locale', 'ru'))
+  await freezeClock(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Начать раунд' }).click()
+  await page.clock.runFor(9000)
+  const response = page.getByRole('button', { name: /^Позиция/ })
+  await expect(response).toBeInViewport({ ratio: 1 })
+  const field = (await page.locator('.field').boundingBox())!
+  const button = (await response.boundingBox())!
+  expect(button.x).toBeCloseTo(field.x, 0)
+  expect(button.width).toBeCloseTo(field.width, 0)
+  expect(button.y).toBeGreaterThanOrEqual(field.y + field.height)
+})
+
+test('Russian Dual labels fit the shortest three-row landscape layout', async ({ page }) => {
+  await page.setViewportSize({ width: 620, height: 351 })
+  await page.addInitScript(() => localStorage.setItem('nback-locale', 'ru'))
+  await freezeClock(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Настройки раунда' }).click()
+  await page.getByRole('button', { name: 'Двойной', exact: true }).click()
+  await page.getByRole('button', { name: 'Закрыть окно' }).click()
+  await page.evaluate(() => document.fonts.ready)
+  await page.getByRole('button', { name: 'Начать раунд' }).click()
+  await expect(page.getByRole('heading', { name: 'Приготовьтесь' })).toBeVisible()
+  const field = page.locator('.field')
+  const initial = (await field.boundingBox())!
+  await page.clock.runFor(3000)
+  expect(await field.boundingBox()).toEqual(initial)
+  await page.clock.runFor(6000)
+  expect(await field.boundingBox()).toEqual(initial)
+  for (const button of await page.locator('.answer-button').all()) {
+    expect((await button.boundingBox())!.y).toBeGreaterThan(initial.y + initial.height)
+    await button.click()
+    await expect(button.locator('small')).toBeInViewport({ ratio: 1 })
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(351)
 })
 
 test.describe('touch response feedback', () => {

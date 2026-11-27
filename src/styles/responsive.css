@@ -54,15 +54,6 @@
   width: 100%;
 }
 
-[data-compact] .answers {
-  width: min(100%,438px);
-}
-
-[data-compact] .answer-button {
-  flex: 1;
-  min-width: 0;
-}
-
 [data-compact][data-round-active] .topbar,
 [data-compact][data-round-active] footer {
   display: none;
@@ -75,11 +66,7 @@
 [data-compact][data-round-active] .training {
   min-height: 100svh;
   padding-block: var(--round-padding-top) var(--round-padding-bottom);
-}
-
-[data-compact][data-round-active] .game-region {
-  flex: 1;
-  grid-template-rows: 1fr auto;
+  justify-content: center;
 }
 
 @media (max-width:650px) {
@@ -161,19 +148,32 @@
   }
 }
 
-/* A short window can fit the start action beside the preview. During play,
-   each thumb gets its own side when the field and two targets fit across. */
+/* All three rows share the frame width and its inset to the visible field. */
+@media (orientation:portrait), (height > 350px) {
+  [data-round-active] .training[data-field-layout] {
+    width: min(100%,var(--field-side));
+    margin-inline: auto;
+  }
+
+  [data-round-active] .training[data-field-layout] .training-heading,
+  [data-round-active] .answers {
+    width: auto;
+    margin-inline: var(--field-margin);
+  }
+
+  [data-round-active] .training-heading {
+    display: grid;
+    grid-template-columns: minmax(0,2fr) minmax(44px,1fr);
+  }
+
+  [data-round-active] .answers {
+    justify-self: stretch;
+  }
+}
 
 @media (orientation:landscape) and (max-height:560px) {
   [data-compact] .workspace {
     padding-block: 8px 12px;
-  }
-
-  [data-compact][data-round-active] .workspace {
-    /* The round measures the usable height inside these safe-area gutters. */
-    container-type: size;
-    height: 100svh;
-    padding-block: max(5px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-bottom));
   }
 
   [data-compact] .training[data-field-layout] {
@@ -181,7 +181,7 @@
     max-width: none;
   }
 
-  [data-compact] .game-region {
+  [data-compact]:not([data-round-active]) .game-region {
     grid-template: "field controls" auto / minmax(0,1.25fr) minmax(0,1fr);
     column-gap: 12px;
   }
@@ -210,6 +210,44 @@
   }
 
   [data-compact][data-round-active] .training {
+    --round-gap: 4px;
+    --round-padding-top: max(5px,env(safe-area-inset-top));
+    --round-padding-bottom: max(8px,env(safe-area-inset-bottom));
+    --field-side: min(360px,var(--compact-field-height));
+  }
+
+  [data-round-active] .answer-button {
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 2px 6px;
+    padding: 2px 4px;
+  }
+}
+
+@media (orientation:landscape) and (350px < height <= 410px) {
+  [data-round-active] .training {
+    --toolbar-height: 52px;
+  }
+
+  [data-round-active] .training[data-field-layout] h1 {
+    font-size: 16px;
+  }
+
+  [data-round-active] .training[data-field-layout] .mode-label {
+    font-size: 11px;
+    line-height: 1.15;
+  }
+}
+
+/* In very shallow windows, keep the square and touch targets visible together. */
+@media (orientation:landscape) and (max-height:350px) {
+  [data-compact][data-round-active] .workspace {
+    container-type: size;
+    height: 100svh;
+    padding-block: max(5px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-bottom));
+  }
+
+  [data-compact][data-round-active] .training {
     container: round / inline-size;
     --field-side: min(360px,100cqh - 65px);
     min-height: 100%;
@@ -217,20 +255,15 @@
   }
 
   [data-compact][data-round-active] .game-region {
-    grid-template-rows: 1fr;
-    grid-template-columns: minmax(0,1fr) minmax(100px,36%);
+    flex: 1;
+    grid-template: "field controls" 1fr / minmax(0,1fr) minmax(100px,36%);
+    column-gap: 12px;
   }
 
   [data-round-active] .answers {
+    justify-self: stretch;
     flex-direction: column;
     gap: calc(var(--feedback-space) + 8px);
-  }
-
-  [data-round-active] .answer-button {
-    flex-wrap: wrap;
-    align-content: center;
-    gap: 2px 6px;
-    padding-inline: 4px;
   }
 }
 
