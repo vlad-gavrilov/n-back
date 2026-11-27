@@ -50,10 +50,6 @@
   margin-bottom: 16px;
 }
 
-[data-compact] .training[data-field-layout] .training-heading {
-  width: 100%;
-}
-
 [data-compact][data-round-active] .topbar,
 [data-compact][data-round-active] footer {
   display: none;
@@ -150,13 +146,14 @@
 
 /* All three rows share the frame width and its inset to the visible field. */
 @media (orientation:portrait), (height > 350px) {
-  [data-round-active] .training[data-field-layout] {
+  .training[data-field-layout] {
     width: min(100%,var(--field-side));
     margin-inline: auto;
   }
 
-  [data-round-active] .training[data-field-layout] .training-heading,
-  [data-round-active] .answers {
+  .training[data-field-layout] .training-heading,
+  .start-row,
+  .answers {
     width: auto;
     margin-inline: var(--field-margin);
   }
@@ -166,8 +163,13 @@
     grid-template-columns: minmax(0,2fr) minmax(44px,1fr);
   }
 
-  [data-round-active] .answers {
+  .start-row,
+  .answers {
     justify-self: stretch;
+  }
+
+  .start-row .primary-button {
+    flex: 1 1 auto;
   }
 }
 
@@ -181,14 +183,26 @@
     max-width: none;
   }
 
+  [data-compact]:not([data-round-active]) .training[data-field-layout] {
+    /* The preview occupies the first column, with the start action beside it. */
+    --field-margin: calc(var(--field-side) * .03);
+    width: min(100%,var(--field-side) + 12px + max(180px,var(--field-side)));
+  }
+
+  [data-compact]:not([data-round-active]) .training[data-field-layout] .training-heading {
+    width: auto;
+    margin-inline: var(--field-margin);
+  }
+
   [data-compact]:not([data-round-active]) .game-region {
-    grid-template: "field controls" auto / minmax(0,1.25fr) minmax(0,1fr);
+    grid-template: "field controls" auto / var(--field-side) minmax(0,1fr);
     column-gap: 12px;
   }
 
   .start-row {
     flex-direction: column;
     gap: 8px;
+    margin-inline: 0;
   }
 
   .start-row .primary-button {
@@ -241,6 +255,10 @@
 
 /* In very shallow windows, keep the square and touch targets visible together. */
 @media (orientation:landscape) and (max-height:350px) {
+  [data-compact][data-round-active] .training[data-field-layout] .training-heading {
+    width: 100%;
+  }
+
   [data-compact][data-round-active] .workspace {
     container-type: size;
     height: 100svh;

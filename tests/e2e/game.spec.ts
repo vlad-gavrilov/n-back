@@ -124,6 +124,10 @@ for (const locale of locales) for (const width of [320, 430, 744, 756, 1024, 144
   for (let theme = 0; theme < 2; theme++) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await expect(page.getByRole('button', { name: dictionaries[locale].begin })).toBeInViewport()
+    const field = (await page.locator('.field').boundingBox())!
+    const heading = (await page.locator('.training-heading').boundingBox())!
+    expect(heading.x).toBeCloseTo(field.x, 0)
+    expect(heading.width).toBeCloseTo(field.width, 0)
     await page.locator('.theme-toggle').click()
   }
 })
@@ -147,10 +151,11 @@ for (const locale of locales) {
       await expect(page.getByRole('contentinfo')).toBeInViewport({ ratio: 1 })
       const heading = (await page.locator('.training-heading').boundingBox())!
       const field = (await page.locator('.field').boundingBox())!
-      expect(heading.width).toBeGreaterThanOrEqual(Math.min(640, height * .64))
-      expect(heading.width).toBeLessThanOrEqual(640)
-      expect(field.width).toBeCloseTo(heading.width * .92, 1)
-      expect(field.x + field.width / 2).toBeCloseTo(heading.x + heading.width / 2, 1)
+      expect(field.width).toBeGreaterThanOrEqual(Math.floor(Math.min(640, height * .64) * .92))
+      expect(field.width).toBeLessThanOrEqual(640)
+      expect(heading.x).toBeCloseTo(field.x, 0)
+      expect(heading.width).toBeCloseTo(field.width, 0)
+      expect((await start.boundingBox())!.x).toBeCloseTo(field.x, 0)
       expect(field.height).toBeCloseTo(field.width, 1)
     })
   }
@@ -208,4 +213,6 @@ for (const locale of locales) for (const [width, height] of [[1200, 683], [932, 
   if (locale !== 'en') await selectLocale(page, locale)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await expect(page.getByRole('button', { name: dictionaries[locale].begin })).toBeInViewport({ ratio: 1 })
+  const title = (await page.locator('.training-heading h1').boundingBox())!
+  expect(title.x).toBeCloseTo((await page.locator('.field').boundingBox())!.x, 0)
 })
