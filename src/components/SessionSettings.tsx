@@ -92,12 +92,14 @@ export function SessionSettings({ config, locked, onChange, onTestSound, feedbac
         />
         <span>{t.liveFeedback}<small>{t.feedbackHint}</small></span>
       </label>
-      {config.mode === 'dual' && (
-        <button className="text-button" disabled={locked} onClick={onTestSound}>
-          <span aria-hidden="true">♫ </span>{t.testSound}
-        </button>
-      )}
-      {feedback}
+      {config.mode === 'dual' ? (
+        <div className="sound-check">
+          <button className="text-button" disabled={locked} onClick={onTestSound}>
+            <span aria-hidden="true">♫ </span>{t.testSound}
+          </button>
+          {feedback}
+        </div>
+      ) : feedback}
       <div className="settings-note">
         <strong>{t.smallSteps}</strong>
         <p>{t.settingsHint(config.n)}</p>

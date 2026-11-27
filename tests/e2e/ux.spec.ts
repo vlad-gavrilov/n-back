@@ -10,6 +10,47 @@ async function dualSettings(page: Page) {
   return page.getByRole('dialog')
 }
 
+for (const width of [1024, 320]) test(`Russian sound check stays on one line without shifting settings at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 850 })
+  await page.addInitScript(() => localStorage.setItem('nback-locale', 'ru'))
+  await freezeClock(page)
+  await page.goto('/')
+  const t = dictionaries.ru
+  const settings = width === 320 ? page.getByRole('dialog') : page.locator('aside.settings')
+  if (width === 320) await page.getByRole('button', { name: t.sessionSettings }).click()
+  await settings.getByRole('button', { name: t.dual, exact: true }).click()
+  const button = settings.getByRole('button', { name: t.testSound, exact: true })
+  await button.scrollIntoViewIfNeeded()
+  await page.evaluate(() => document.fonts.ready)
+  const note = settings.locator('.settings-note')
+  const initialTop = (await note.boundingBox())!.y
+
+  async function expectStatus(message: string) {
+    const status = settings.getByText(message, { exact: true })
+    await expect(status).toBeVisible()
+    expect((await note.boundingBox())!.y).toBeCloseTo(initialTop, 0)
+    const lines = await status.evaluate(element => {
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      return range.getClientRects().length
+    })
+    expect(lines).toBe(1)
+  }
+
+  let release!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/audio/*.wav*', async route => { await pending; await route.continue() })
+  try {
+    await button.click()
+    await expectStatus(t.soundTestPreparing)
+  } finally {
+    release()
+  }
+  await expectStatus(t.soundTestPlaying)
+  await page.clock.runFor(100)
+  await expectStatus(t.soundTestPlayed)
+})
+
 test('sound test error and retry stay inside mobile settings', async ({ page }) => {
   await freezeClock(page)
   await page.route('**/audio/*.wav*', route => route.fulfill({ status: 503, body: 'Unavailable' }))

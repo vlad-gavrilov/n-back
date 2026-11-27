@@ -36,9 +36,9 @@ export const ru: Messages = {
   testSound: 'Проверить звук',
   smallSteps: 'Как искать совпадения',
 
-  soundTestPreparing: 'Подготовка тестового звука…',
-  soundTestPlaying: 'Воспроизведение тестового звука…',
-  soundTestPlayed: 'Тестовый звук воспроизведен.',
+  soundTestPreparing: 'Загрузка звука…',
+  soundTestPlaying: 'Звучит буква…',
+  soundTestPlayed: 'Звук проверен.',
   retrySound: 'Попробовать снова',
   roundInterrupted: 'Раунд прерван',
   settingsHint: n => `Сравнивайте текущую позицию или звук с тем, что было ${n}${format.stepUnit(n)} назад. Если совпадения нет, ничего не нажимайте.`,

@@ -290,9 +290,26 @@ dialog::backdrop {
 
 /* Audio status */
 
+.sound-check,
 .audio-feedback {
   font-size: 13px;
   line-height: 1.7;
+}
+
+.sound-check {
+  display: grid;
+  grid-template-rows: auto minmax(1lh,auto);
+}
+
+.sound-check > button {
+  justify-self: start;
+}
+
+.sound-check + .settings-note {
+  margin-top: 8px;
+}
+
+.audio-feedback {
   overflow-wrap: anywhere;
 }
 
@@ -301,6 +318,7 @@ dialog::backdrop {
   margin: 12px 0 20px;
 }
 
-.training-heading > .audio-feedback[role=status] {
+.training-heading > .audio-feedback[role=status],
+.sound-check > .audio-feedback[role=status] {
   margin: 0;
 }
